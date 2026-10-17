@@ -1,0 +1,59 @@
+name: fitness
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: fitness-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-fitness}
+      POSTGRES_USER: ${DB_USER:-fitness}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-fitness}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-fitness} -d ${DB_NAME:-fitness}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  fitness-api:
+    build: ./fitness-api
+    container_name: fitness-api
+    restart: unless-stopped
+    environment:
+      PORT: 3000
+      TZ: ${TZ:-Asia/Baku}
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-fitness}
+      DB_USER: ${DB_USER:-fitness}
+      DB_PASSWORD: ${DB_PASSWORD:-fitness}
+      DB_SYNC: ${DB_SYNC:-true}
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${API_PORT:-3000}:3000"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  fitness-web:
+    build: ./fitness-web
+    container_name: fitness-web
+    restart: unless-stopped
+    depends_on:
+      fitness-api:
+        condition: service_healthy
+    ports:
+      - "${WEB_PORT:-8080}:80"
+
+volumes:
+  pgdata:

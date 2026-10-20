@@ -5,8 +5,6 @@ import ShowChartRounded from '@mui/icons-material/ShowChartRounded';
 import {
   Box,
   Button,
-  Card,
-  CardContent,
   Chip,
   Dialog,
   DialogContent,
@@ -25,7 +23,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { api, errorMessage } from '../api/client';
 import type { Exercise, MuscleGroup } from '../api/types';
-import { EmptyState, GlassCard, Loading, PageHeader } from '../components/common';
+import { EmptyState, Loading, Num, PageHeader, Panel } from '../components/common';
 import { useExercisesStore } from '../store/exercises';
 import { notify } from '../store/ui';
 import { fmtDateShort, fmtNum, MUSCLE_GROUPS, MUSCLE_LABELS } from '../utils/format';
@@ -58,17 +56,26 @@ function ProgressDialog({ exercise, onClose }: { exercise: Exercise; onClose: ()
           <EmptyState text="Bu hərəkət üçün hələ nəticə qeyd olunmayıb" />
         ) : (
           <>
-            <Stack direction="row" gap={1} mb={2} flexWrap="wrap">
-              <Chip label={`${points.length} məşq`} />
-              <Chip color="primary" label={`Rekord: ${fmtNum(best, 1)} kg`} />
-              <Chip label={`Son: ${fmtNum(points[points.length - 1].maxWeight, 1)} kg`} />
+            <Stack direction="row" gap={4} mb={2} flexWrap="wrap">
+              {[
+                ['Məşq', `${points.length}`],
+                ['Rekord', `${fmtNum(best, 1)} kg`],
+                ['Son', `${fmtNum(points[points.length - 1].maxWeight, 1)} kg`],
+              ].map(([k, v]) => (
+                <Box key={k}>
+                  <Typography variant="body2" color="text.secondary">
+                    {k}
+                  </Typography>
+                  <Num sx={{ fontSize: 20, fontWeight: 600 }}>{v}</Num>
+                </Box>
+              ))}
             </Stack>
             <LineChart
               height={320}
               xAxis={[{ scaleType: 'point', data: points.map((p) => fmtDateShort(p.date)) }]}
               series={[
-                { data: points.map((p) => p.maxWeight), label: 'Maks. çəki (kg)', color: theme.palette.primary.main, curve: 'monotoneX' },
-                { data: points.map((p) => Math.round(p.est1rm * 10) / 10), label: 'Təxmini 1RM (kg)', color: theme.palette.secondary.main, curve: 'monotoneX' },
+                { data: points.map((p) => p.maxWeight), label: 'Maks. çəki (kg)', color: theme.tokens.ink, curve: 'linear' },
+                { data: points.map((p) => Math.round(p.est1rm * 10) / 10), label: 'Təxmini 1RM (kg)', color: theme.tokens.red, curve: 'linear' },
               ]}
               margin={{ left: 48, right: 16, top: 48, bottom: 28 }}
             />
@@ -127,10 +134,9 @@ export default function ExercisesPage() {
 
   return (
     <>
-      <PageHeader title="Hərəkətlər" subtitle="Hərəkət kataloqu və hər hərəkət üzrə irəliləyiş qrafiki" />
+      <PageHeader title="Hərəkətlər" subtitle="Kataloq və hər hərəkətin irəliləyiş qrafiki" />
 
-      <Card sx={{ mb: 2.5 }}>
-        <CardContent>
+      <Panel title="Öz hərəkətinizi əlavə edin" sx={{ mb: 3, height: 'auto' }}>
           <Stack component="form" onSubmit={submit} direction={{ xs: 'column', sm: 'row' }} gap={2}>
             <TextField
               label="Yeni hərəkət"
@@ -150,8 +156,7 @@ export default function ExercisesPage() {
               Əlavə et
             </Button>
           </Stack>
-        </CardContent>
-      </Card>
+      </Panel>
 
       {focus && filter === focus.group && (
         <Alert severity="info" sx={{ mb: 2 }} onClose={() => setFilter(focus.group)}>
@@ -159,38 +164,42 @@ export default function ExercisesPage() {
         </Alert>
       )}
 
-      <Stack direction="row" gap={1} mb={2.5} flexWrap="wrap">
-        <Chip label="Hamısı" color={filter === 'all' ? 'primary' : 'default'} onClick={() => setFilter('all')} />
+      <Stack direction="row" gap={1} mb={3} flexWrap="wrap">
+        <Chip label="Hamısı" color={filter === 'all' ? 'primary' : 'default'} variant={filter === 'all' ? 'filled' : 'outlined'} onClick={() => setFilter('all')} />
         {MUSCLE_GROUPS.map((g) => (
-          <Chip key={g} label={MUSCLE_LABELS[g]} color={filter === g ? 'primary' : 'default'} onClick={() => setFilter(g)} />
+          <Chip key={g} label={MUSCLE_LABELS[g]} color={filter === g ? 'primary' : 'default'} variant={filter === g ? 'filled' : 'outlined'} onClick={() => setFilter(g)} />
         ))}
       </Stack>
 
       {!loaded ? (
         <Loading />
       ) : (
-        <Grid container spacing={2.5}>
+        <Grid container spacing={3}>
           {visible.length === 0 && (
             <Grid item xs={12}>
-              <Card>
-                <EmptyState text="Bu qrup üçün hələ hərəkət yoxdur — yuxarıdan öz hərəkətinizi əlavə edin" />
-              </Card>
+              <Panel>
+                <EmptyState text="Bu qrupda hələ hərəkət yoxdur. Yuxarıdakı formadan öz hərəkətinizi əlavə edin." />
+              </Panel>
             </Grid>
           )}
           {visible.map(({ g, list }) => (
             <Grid item xs={12} md={6} xl={4} key={g}>
-              <GlassCard title={MUSCLE_LABELS[g]} action={<Chip size="small" label={list.length} />}>
-                <Stack gap={0.5}>
-                  {list.map((ex) => (
+              <Panel title={MUSCLE_LABELS[g]} action={<Num sx={{ fontSize: 13, color: 'text.secondary' }}>{list.length}</Num>} flush>
+                <Box>
+                  {list.map((ex, i) => (
                     <Stack
                       key={ex.id}
                       direction="row"
                       alignItems="center"
                       gap={1}
-                      sx={{ px: 1, py: 0.5, borderRadius: 2, '&:hover': { bgcolor: 'action.hover' } }}
+                      sx={{ px: { xs: 2, sm: 2.75 }, py: 0.75, borderTop: i ? (t) => `1px solid ${t.tokens.rule}` : 0, '&:hover': { bgcolor: 'action.hover' } }}
                     >
                       <Typography flex={1}>{ex.name}</Typography>
-                      {ex.userId && <Chip size="small" variant="outlined" label="Mənim" />}
+                      {ex.userId && (
+                        <Typography variant="body2" color="text.secondary">
+                          öz
+                        </Typography>
+                      )}
                       <IconButton size="small" onClick={() => setSelected(ex)} aria-label="İrəliləyiş">
                         <ShowChartRounded fontSize="small" />
                       </IconButton>
@@ -201,8 +210,8 @@ export default function ExercisesPage() {
                       )}
                     </Stack>
                   ))}
-                </Stack>
-              </GlassCard>
+                </Box>
+              </Panel>
             </Grid>
           ))}
         </Grid>

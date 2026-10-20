@@ -1,9 +1,5 @@
 import AddRounded from '@mui/icons-material/AddRounded';
 import DeleteOutlineRounded from '@mui/icons-material/DeleteOutlineRounded';
-import FlagRounded from '@mui/icons-material/FlagRounded';
-import HeightRounded from '@mui/icons-material/HeightRounded';
-import MonitorHeartRounded from '@mui/icons-material/MonitorHeartRounded';
-import ScaleRounded from '@mui/icons-material/ScaleRounded';
 import {
   Button,
   Grid,
@@ -22,7 +18,7 @@ import {
 import { LineChart } from '@mui/x-charts';
 import { useEffect, useState, type FormEvent } from 'react';
 import { api, errorMessage } from '../api/client';
-import { EmptyState, GlassCard, Loading, PageHeader, StatCard } from '../components/common';
+import { EmptyState, Loading, Num, PageHeader, Panel, StatStrip } from '../components/common';
 import { useAuthStore } from '../store/auth';
 import { notify } from '../store/ui';
 import { fmtDate, fmtDateShort, fmtNum, today } from '../utils/format';
@@ -106,50 +102,40 @@ export default function BodyPage() {
 
   return (
     <>
-      <PageHeader title="Bədən ölçüləri" subtitle="Çəki, yağ faizi və hədəflərinizi izləyin" />
+      <PageHeader title="Bədən ölçüləri" subtitle="Çəki, yağ faizi, BMI və hədəf" />
 
-      <Grid container spacing={2.5}>
-        <Grid item xs={6} md={3}>
-          <StatCard
-            icon={<ScaleRounded />}
-            label="Cari çəki"
-            value={latest ? `${fmtNum(latest.weightKg, 1)} kg` : '—'}
-            hint={
-              latest && first && metrics.length > 1
-                ? `${latest.weightKg - first.weightKg >= 0 ? '+' : ''}${fmtNum(latest.weightKg - first.weightKg, 1)} kg başlanğıcdan`
-                : undefined
-            }
-          />
-        </Grid>
-        <Grid item xs={6} md={3}>
-          <StatCard
-            icon={<FlagRounded />}
-            label="Hədəfə qədər"
-            value={toGoal != null ? `${fmtNum(Math.abs(toGoal), 1)} kg` : '—'}
-            hint={toGoal != null ? (Math.abs(toGoal) < 0.1 ? 'Hədəfə çatdınız 🎉' : toGoal > 0 ? 'arıqlamaq' : 'kökəlmək') : 'Hədəf təyin edin'}
-            color="secondary.main"
-          />
-        </Grid>
-        <Grid item xs={6} md={3}>
-          <StatCard
-            icon={<MonitorHeartRounded />}
-            label="BMI"
-            value={bmi ? fmtNum(bmi, 1) : '—'}
-            hint={bmi ? bmiLabel(bmi) : 'Boyunuzu daxil edin'}
-            color="success.main"
-          />
-        </Grid>
-        <Grid item xs={6} md={3}>
-          <StatCard
-            icon={<HeightRounded />}
-            label="Yağ faizi"
-            value={latest?.bodyFatPct != null ? `${fmtNum(latest.bodyFatPct, 1)}%` : '—'}
-            color="warning.main"
+      <Grid container spacing={3}>
+        <Grid item xs={12}>
+          <StatStrip
+            items={[
+              {
+                label: 'Cari çəki',
+                value: latest ? fmtNum(latest.weightKg, 1) : '—',
+                unit: latest ? 'kg' : undefined,
+                hint:
+                  latest && first && metrics.length > 1
+                    ? `${latest.weightKg - first.weightKg >= 0 ? '+' : ''}${fmtNum(latest.weightKg - first.weightKg, 1)} kg başlanğıcdan`
+                    : undefined,
+              },
+              {
+                label: 'Hədəfə qədər',
+                value: toGoal != null ? fmtNum(Math.abs(toGoal), 1) : '—',
+                unit: toGoal != null ? 'kg' : undefined,
+                hint: toGoal != null ? (Math.abs(toGoal) < 0.1 ? 'Hədəfə çatmısınız' : toGoal > 0 ? 'arıqlamaq' : 'kökəlmək') : 'Hədəf təyin edin',
+                accent: toGoal != null && Math.abs(toGoal) < 0.1,
+              },
+              { label: 'BMI', value: bmi ? fmtNum(bmi, 1) : '—', hint: bmi ? bmiLabel(bmi) : 'Boyunuzu daxil edin' },
+              {
+                label: 'Yağ faizi',
+                value: latest?.bodyFatPct != null ? fmtNum(latest.bodyFatPct, 1) : '—',
+                unit: latest?.bodyFatPct != null ? '%' : undefined,
+              },
+            ]}
           />
         </Grid>
 
         <Grid item xs={12} lg={8}>
-          <GlassCard title="Çəki dinamikası">
+          <Panel title="Çəki dinamikası">
             {loading && !data ? (
               <Loading />
             ) : metrics.length > 1 ? (
@@ -166,26 +152,26 @@ export default function BodyPage() {
                   {
                     data: weights,
                     label: 'Çəki (kg)',
-                    color: theme.palette.primary.main,
-                    area: true,
-                    curve: 'monotoneX',
+                    color: theme.tokens.ink,
+                    curve: 'linear',
                   },
                   ...(goal
-                    ? [{ data: weights.map(() => goal), label: 'Hədəf', color: theme.palette.secondary.main, showMark: false }]
+                    ? [{ data: weights.map(() => goal), label: 'Hədəf', color: theme.tokens.red, showMark: false, id: 'goal' }]
                     : []),
                 ]}
                 margin={{ left: 48, right: 16, top: 48, bottom: 28 }}
-                sx={{ '& .MuiAreaElement-root': { fillOpacity: 0.12 } }}
+                grid={{ horizontal: true }}
+                sx={{ '& .MuiChartsGrid-line': { stroke: theme.tokens.rule, strokeDasharray: '2 4' }, '& .MuiLineElement-series-goal': { strokeDasharray: '6 4' } }}
               />
             ) : (
-              <EmptyState text="Qrafik üçün ən azı 2 ölçü əlavə edin" />
+              <EmptyState text="Qrafik üçün ən azı iki ölçü lazımdır. Sağdakı formadan əlavə edin." />
             )}
-          </GlassCard>
+          </Panel>
         </Grid>
 
         <Grid item xs={12} lg={4}>
-          <Stack gap={2.5} height="100%">
-            <GlassCard title="Yeni ölçü">
+          <Stack gap={3} height="100%">
+            <Panel title="Yeni ölçü">
               <Stack component="form" onSubmit={addMetric} gap={2}>
                 <TextField
                   label="Tarix"
@@ -220,8 +206,8 @@ export default function BodyPage() {
                   Əlavə et
                 </Button>
               </Stack>
-            </GlassCard>
-            <GlassCard title="Profil və hədəf">
+            </Panel>
+            <Panel title="Profil və hədəf">
               <Stack component="form" onSubmit={saveProfile} gap={2}>
                 <TextField
                   label="Ad"
@@ -251,12 +237,12 @@ export default function BodyPage() {
                   Yadda saxla
                 </Button>
               </Stack>
-            </GlassCard>
+            </Panel>
           </Stack>
         </Grid>
 
         <Grid item xs={12}>
-          <GlassCard title="Ölçü tarixçəsi">
+          <Panel title="Ölçü tarixçəsi">
             {metrics.length ? (
               <Table size="small">
                 <TableHead>
@@ -274,9 +260,11 @@ export default function BodyPage() {
                     const diff = prev ? m.weightKg - prev.weightKg : null;
                     return (
                       <TableRow key={m.id} hover>
-                        <TableCell>{fmtDate(m.date)}</TableCell>
+                        <TableCell>
+                          <Num>{fmtDate(m.date)}</Num>
+                        </TableCell>
                         <TableCell align="right">
-                          <b>{fmtNum(m.weightKg, 1)} kg</b>
+                          <Num sx={{ fontWeight: 600 }}>{fmtNum(m.weightKg, 1)} kg</Num>
                         </TableCell>
                         <TableCell align="right">
                           {diff == null ? (
@@ -303,9 +291,9 @@ export default function BodyPage() {
                 </TableBody>
               </Table>
             ) : (
-              <EmptyState text="Hələ ölçü əlavə olunmayıb" />
+              <EmptyState text="Hələ ölçü yoxdur." />
             )}
-          </GlassCard>
+          </Panel>
         </Grid>
       </Grid>
     </>

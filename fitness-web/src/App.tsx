@@ -1,11 +1,5 @@
-import AdminPanelSettingsRounded from '@mui/icons-material/AdminPanelSettingsRounded';
-import CalendarMonthRounded from '@mui/icons-material/CalendarMonthRounded';
-import DashboardRounded from '@mui/icons-material/DashboardRounded';
-import FitnessCenterRounded from '@mui/icons-material/FitnessCenterRounded';
-import ListAltRounded from '@mui/icons-material/ListAltRounded';
-import MonitorWeightRounded from '@mui/icons-material/MonitorWeightRounded';
 import { Button } from '@mui/material';
-import { Navigate, Outlet, Route, Routes } from 'react-router-dom';
+import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom';
 import AppProviders from './components/AppProviders';
 import Layout, { type NavItem } from './components/Layout';
 import { adminUrl } from './config';
@@ -13,6 +7,7 @@ import AuthPage from './pages/AuthPage';
 import BodyPage from './pages/BodyPage';
 import DashboardPage from './pages/DashboardPage';
 import ExercisesPage from './pages/ExercisesPage';
+import LandingPage from './pages/landing/LandingPage';
 import ProgramDetailPage from './pages/ProgramDetailPage';
 import ProgramEditorPage from './pages/ProgramEditorPage';
 import ProgramsPage from './pages/ProgramsPage';
@@ -20,16 +15,19 @@ import WorkoutsPage from './pages/WorkoutsPage';
 import { useAuthStore, useCan } from './store/auth';
 
 const NAV: NavItem[] = [
-  { to: '/', label: 'Əsas səhifə', icon: <DashboardRounded /> },
-  { to: '/workouts', label: 'Məşqlər', icon: <ListAltRounded /> },
-  { to: '/programs', label: 'Proqramlar', icon: <CalendarMonthRounded /> },
-  { to: '/exercises', label: 'Hərəkətlər', icon: <FitnessCenterRounded /> },
-  { to: '/body', label: 'Bədən ölçüləri', icon: <MonitorWeightRounded /> },
+  { to: '/', label: 'Əsas səhifə' },
+  { to: '/workouts', label: 'Məşqlər' },
+  { to: '/programs', label: 'Proqramlar' },
+  { to: '/exercises', label: 'Hərəkətlər' },
+  { to: '/body', label: 'Bədən ölçüləri' },
 ];
 
+/** Guests see the landing page at "/" and are sent to sign-in from any other app route. */
 function RequireAuth() {
   const token = useAuthStore((s) => s.token);
-  return token ? <Outlet /> : <Navigate to="/login" replace />;
+  const { pathname } = useLocation();
+  if (token) return <Outlet />;
+  return pathname === '/' ? <LandingPage /> : <Navigate to="/login" replace />;
 }
 
 function GuestOnly() {
@@ -41,7 +39,7 @@ function AdminLink() {
   const can = useCan();
   if (!can('admin.access')) return null;
   return (
-    <Button variant="outlined" startIcon={<AdminPanelSettingsRounded />} href={adminUrl()} fullWidth>
+    <Button variant="outlined" href={adminUrl()} fullWidth>
       Admin panel
     </Button>
   );
@@ -56,7 +54,7 @@ export default function App() {
           <Route path="/register" element={<AuthPage mode="register" />} />
         </Route>
         <Route element={<RequireAuth />}>
-          <Route element={<Layout nav={NAV} brand="Fitness Coach" sidebarExtra={<AdminLink />} />}>
+          <Route element={<Layout nav={NAV} sidebarExtra={<AdminLink />} />}>
             <Route index element={<DashboardPage />} />
             <Route path="workouts" element={<WorkoutsPage />} />
             <Route path="programs" element={<ProgramsPage />} />

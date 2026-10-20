@@ -1,67 +1,28 @@
-import DarkModeRounded from '@mui/icons-material/DarkModeRounded';
-import FitnessCenterRounded from '@mui/icons-material/FitnessCenterRounded';
-import LightModeRounded from '@mui/icons-material/LightModeRounded';
-import LogoutRounded from '@mui/icons-material/LogoutRounded';
+import DarkModeOutlined from '@mui/icons-material/DarkModeOutlined';
+import LightModeOutlined from '@mui/icons-material/LightModeOutlined';
 import MenuRounded from '@mui/icons-material/MenuRounded';
-import {
-  AppBar,
-  Avatar,
-  Box,
-  Drawer,
-  IconButton,
-  List,
-  ListItemButton,
-  ListItemIcon,
-  ListItemText,
-  Stack,
-  Toolbar,
-  Tooltip,
-  Typography,
-  useMediaQuery,
-  useTheme,
-} from '@mui/material';
+import { AppBar, Box, Button, Drawer, IconButton, Stack, Toolbar, Tooltip, Typography, useMediaQuery, useTheme } from '@mui/material';
 import { useState, type ReactNode } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/auth';
 import { useUiStore } from '../store/ui';
+import Brand from './Brand';
 
-const DRAWER = 260;
+const DRAWER = 248;
 
 export interface NavItem {
   to: string;
   label: string;
-  icon: ReactNode;
 }
 
 export function ThemeToggle() {
   const { mode, toggleMode } = useUiStore();
   return (
-    <Tooltip title={mode === 'dark' ? 'İşıqlı rejim' : 'Qaranlıq rejim'}>
-      <IconButton onClick={toggleMode}>{mode === 'dark' ? <LightModeRounded /> : <DarkModeRounded />}</IconButton>
+    <Tooltip title={mode === 'dark' ? 'İşıqlı tema' : 'Qaranlıq tema'}>
+      <IconButton onClick={toggleMode} aria-label="Temanı dəyiş">
+        {mode === 'dark' ? <LightModeOutlined fontSize="small" /> : <DarkModeOutlined fontSize="small" />}
+      </IconButton>
     </Tooltip>
-  );
-}
-
-function Brand({ label }: { label: string }) {
-  return (
-    <Stack direction="row" alignItems="center" gap={1.5} px={1}>
-      <Box
-        sx={{
-          width: 40,
-          height: 40,
-          borderRadius: 3,
-          display: 'grid',
-          placeItems: 'center',
-          color: '#fff',
-          background: (t) => `linear-gradient(135deg, ${t.palette.primary.main}, ${t.palette.secondary.main})`,
-        }}
-      >
-        <FitnessCenterRounded fontSize="small" />
-      </Box>
-      <Typography variant="h6" fontWeight={800}>
-        {label}
-      </Typography>
-    </Stack>
   );
 }
 
@@ -71,62 +32,69 @@ export default function Layout({
   sidebarExtra,
 }: {
   nav: NavItem[];
-  brand: string;
+  /** Small label after the wordmark, e.g. "Admin". */
+  brand?: string;
   sidebarExtra?: ReactNode;
 }) {
   const theme = useTheme();
+  const t = theme.tokens;
   const desktop = useMediaQuery(theme.breakpoints.up('md'));
   const [open, setOpen] = useState(false);
   const { user, logout } = useAuthStore();
+  const { mode, toggleMode } = useUiStore();
   const { pathname } = useLocation();
 
   const nav = (
-    <Stack height="100%" p={2} gap={3}>
-      <Box pt={1}>
-        <Brand label={brand} />
+    <Stack height="100%" pt={3} pb={2.5}>
+      <Box px={3} pb={4}>
+        <Brand suffix={brand} />
       </Box>
-      <List sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+      <Box component="nav" aria-label="Bölmələr">
         {items.map((n) => {
           const active = n.to === '/' ? pathname === '/' : pathname.startsWith(n.to);
           return (
-            <ListItemButton
+            <Box
               key={n.to}
               component={NavLink}
               to={n.to}
-              selected={active}
               onClick={() => setOpen(false)}
+              aria-current={active ? 'page' : undefined}
               sx={{
-                '&.Mui-selected': {
-                  bgcolor: 'action.selected',
-                  color: 'primary.main',
-                  '& .MuiListItemIcon-root': { color: 'primary.main' },
-                },
+                display: 'block',
+                py: 1.15,
+                pl: 2.75,
+                pr: 2,
+                borderLeft: `3px solid ${active ? t.ink : 'transparent'}`,
+                color: active ? 'text.primary' : 'text.secondary',
+                fontWeight: active ? 600 : 500,
+                fontSize: 15.5,
+                textDecoration: 'none',
+                '&:hover': { color: 'text.primary', bgcolor: 'action.hover' },
               }}
             >
-              <ListItemIcon sx={{ minWidth: 40 }}>{n.icon}</ListItemIcon>
-              <ListItemText primary={n.label} primaryTypographyProps={{ fontWeight: 600 }} />
-            </ListItemButton>
+              {n.label}
+            </Box>
           );
         })}
-      </List>
+      </Box>
       <Box flex={1} />
-      {sidebarExtra}
-      <Stack direction="row" alignItems="center" gap={1.5} p={1.5} sx={{ borderRadius: 3, bgcolor: 'action.hover' }}>
-        <Avatar sx={{ bgcolor: 'primary.main', width: 36, height: 36 }}>{user?.name?.[0]?.toUpperCase()}</Avatar>
-        <Box minWidth={0} flex={1}>
-          <Typography fontWeight={600} noWrap>
-            {user?.name}
-          </Typography>
-          <Typography variant="caption" color="text.secondary" noWrap display="block">
-            {user?.email}
-          </Typography>
-        </Box>
-        <Tooltip title="Çıxış">
-          <IconButton size="small" onClick={logout}>
-            <LogoutRounded fontSize="small" />
-          </IconButton>
-        </Tooltip>
-      </Stack>
+      {sidebarExtra && <Box px={3} pb={2.5}>{sidebarExtra}</Box>}
+      <Box mx={3} pt={2} sx={{ borderTop: `1px solid ${t.rule}` }}>
+        <Typography fontWeight={600} noWrap>
+          {user?.name}
+        </Typography>
+        <Typography variant="body2" color="text.secondary" noWrap>
+          {user?.email}
+        </Typography>
+        <Stack direction="row" gap={2} mt={1.25}>
+          <Button size="small" onClick={toggleMode} sx={{ px: 0, minWidth: 0, color: 'text.secondary' }}>
+            {mode === 'dark' ? 'İşıqlı tema' : 'Qaranlıq tema'}
+          </Button>
+          <Button size="small" onClick={logout} sx={{ px: 0, minWidth: 0, color: 'text.secondary' }}>
+            Çıxış
+          </Button>
+        </Stack>
+      </Box>
     </Stack>
   );
 
@@ -141,21 +109,18 @@ export default function Layout({
         {nav}
       </Drawer>
       <Box flex={1} minWidth={0}>
-        <AppBar position="sticky" sx={{ backdropFilter: 'blur(16px)' }}>
-          <Toolbar sx={{ gap: 1 }}>
-            {!desktop && (
-              <>
-                <IconButton edge="start" onClick={() => setOpen(true)}>
-                  <MenuRounded />
-                </IconButton>
-                <Brand label={brand} />
-              </>
-            )}
-            <Box flex={1} />
-            <ThemeToggle />
-          </Toolbar>
-        </AppBar>
-        <Box component="main" sx={{ px: { xs: 2, sm: 3, lg: 4 }, pb: 6, pt: 1, maxWidth: 1400, mx: 'auto' }}>
+        {!desktop && (
+          <AppBar position="sticky">
+            <Toolbar sx={{ gap: 1, minHeight: { xs: 58 } }}>
+              <Brand suffix={brand} />
+              <Box flex={1} />
+              <IconButton edge="end" onClick={() => setOpen(true)} aria-label="Menyu">
+                <MenuRounded />
+              </IconButton>
+            </Toolbar>
+          </AppBar>
+        )}
+        <Box component="main" sx={{ px: { xs: 2, sm: 3, lg: 5 }, pb: 8, maxWidth: 1320, mx: 'auto' }}>
           <Outlet />
         </Box>
       </Box>

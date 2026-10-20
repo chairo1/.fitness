@@ -1,15 +1,12 @@
 import AddRounded from '@mui/icons-material/AddRounded';
-import CalendarMonthRounded from '@mui/icons-material/CalendarMonthRounded';
-import CheckCircleRounded from '@mui/icons-material/CheckCircleRounded';
 import DeleteOutlineRounded from '@mui/icons-material/DeleteOutlineRounded';
-import EditRounded from '@mui/icons-material/EditRounded';
+import EditOutlined from '@mui/icons-material/EditOutlined';
 import {
   Box,
   Button,
   Card,
   CardActionArea,
   CardContent,
-  Chip,
   Grid,
   IconButton,
   LinearProgress,
@@ -20,7 +17,7 @@ import {
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { api, errorMessage } from '../api/client';
 import type { Program } from '../api/types';
-import { EmptyState, Loading, PageHeader } from '../components/common';
+import { EmptyState, Loading, Num, PageHeader, Panel } from '../components/common';
 import { notify } from '../store/ui';
 import { fmtDate, ordinal, today } from '../utils/format';
 import { useAsync } from '../utils/useAsync';
@@ -29,7 +26,7 @@ function phase(p: Program) {
   const t = today();
   if (t < p.startDate) return { label: 'Başlamayıb', color: 'default' as const };
   if (t > p.endDate) return { label: 'Bitib', color: 'default' as const };
-  return { label: 'Davam edir', color: 'info' as const };
+  return { label: 'Davam edir', color: 'default' as const };
 }
 
 export default function ProgramsPage() {
@@ -61,7 +58,7 @@ export default function ProgramsPage() {
     <>
       <PageHeader
         title="Proqramlar"
-        subtitle="Həftəlik və aylıq məşq planlarınızı hazırlayın və icrasını izləyin"
+        subtitle="Həftəlik və aylıq planlar və onların icrası"
         action={
           <Button variant="contained" startIcon={<AddRounded />} component={RouterLink} to="/programs/new">
             Yeni proqram
@@ -72,19 +69,18 @@ export default function ProgramsPage() {
       {loading && !data ? (
         <Loading />
       ) : !data?.length ? (
-        <Card>
+        <Panel>
           <EmptyState
-            icon={<CalendarMonthRounded fontSize="inherit" />}
-            text="Hələ proqramınız yoxdur. İlk həftəlik və ya aylıq planınızı yaradın."
+            text="Hələ proqram yoxdur. Həftəlik (7 gün) və ya aylıq (4 həftə) plan qurun — hər gün üçün hərəkətlər, set və hədəf çəki."
             action={
               <Button variant="outlined" component={RouterLink} to="/programs/new">
-                Proqram yarat
+                Proqram qur
               </Button>
             }
           />
-        </Card>
+        </Panel>
       ) : (
-        <Grid container spacing={2.5}>
+        <Grid container spacing={3}>
           {data.map((p) => {
             const ph = phase(p);
             return (
@@ -94,45 +90,55 @@ export default function ProgramsPage() {
                     height: '100%',
                     display: 'flex',
                     flexDirection: 'column',
-                    outline: p.isActive ? 2 : 0,
-                    outlineColor: 'primary.main',
+                    borderTop: (t) => `${p.isActive ? 4 : 1}px solid ${p.isActive ? t.tokens.ink : t.tokens.ruleStrong}`,
                   }}
                 >
                   <CardActionArea onClick={() => navigate(`/programs/${p.id}`)} sx={{ flex: 1 }}>
-                    <CardContent>
-                      <Stack direction="row" gap={1} mb={1} flexWrap="wrap">
-                        <Chip size="small" label={p.type === 'weekly' ? 'Həftəlik' : 'Aylıq'} color="primary" variant="outlined" />
-                        <Chip size="small" label={ph.label} color={ph.color} variant="outlined" />
-                        {p.isActive && <Chip size="small" color="primary" icon={<CheckCircleRounded />} label="Aktiv" />}
+                    <CardContent sx={{ p: 2.75 }}>
+                      <Stack direction="row" justifyContent="space-between" gap={1} mb={1.25}>
+                        <Typography variant="body2" color="text.secondary">
+                          {p.type === 'weekly' ? 'Həftəlik' : 'Aylıq'} · {ph.label}
+                        </Typography>
+                        {p.isActive && (
+                          <Typography variant="body2" fontWeight={600} color="secondary.main">
+                            Aktiv
+                          </Typography>
+                        )}
                       </Stack>
-                      <Typography variant="h6">{p.name}</Typography>
-                      <Typography variant="body2" color="text.secondary" mb={2}>
-                        {fmtDate(p.startDate)} — {fmtDate(p.endDate)}
+                      <Typography variant="h5" component="h2">
+                        {p.name}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" mt={0.5} mb={2}>
+                        <Num sx={{ fontSize: 13 }}>
+                          {fmtDate(p.startDate)} — {fmtDate(p.endDate)}
+                        </Num>
                       </Typography>
                       {p.description && (
-                        <Typography variant="body2" color="text.secondary" mb={2} sx={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                        <Typography
+                          variant="body2"
+                          mb={2}
+                          sx={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}
+                        >
                           {p.description}
                         </Typography>
                       )}
-                      <Stack direction="row" justifyContent="space-between" mb={0.5}>
+                      <Stack direction="row" justifyContent="space-between" mb={0.75}>
                         <Typography variant="body2" color="text.secondary">
                           {p.stats.completed}/{p.stats.totalDays} gün
                           {p.stats.missed > 0 && ` · ${p.stats.missed} buraxılıb`}
                         </Typography>
-                        <Typography variant="body2" fontWeight={700}>
-                          {p.stats.progress}%
-                        </Typography>
+                        <Num sx={{ fontSize: 14, fontWeight: 600 }}>{p.stats.progress}%</Num>
                       </Stack>
                       <LinearProgress variant="determinate" value={p.stats.progress} />
                       {p.weekStats.length > 1 && (
-                        <Stack direction="row" gap={1} mt={1.5}>
+                        <Stack direction="row" gap={1} mt={2}>
                           {p.weekStats.map((w) => (
                             <Box key={w.week} flex={1}>
                               <LinearProgress
                                 variant="determinate"
                                 color="success"
                                 value={w.planned ? (w.completed / w.planned) * 100 : 0}
-                                sx={{ height: 5 }}
+                                sx={{ height: 3 }}
                               />
                               <Typography variant="caption" color="text.secondary">
                                 {ordinal(w.week)} həftə
@@ -143,16 +149,23 @@ export default function ProgramsPage() {
                       )}
                     </CardContent>
                   </CardActionArea>
-                  <Stack direction="row" px={1.5} pb={1.5} gap={1} alignItems="center">
+                  <Stack
+                    direction="row"
+                    px={2}
+                    py={1}
+                    gap={1}
+                    alignItems="center"
+                    sx={{ borderTop: (t) => `1px solid ${t.tokens.rule}` }}
+                  >
                     {!p.isActive && (
-                      <Button size="small" onClick={() => activate(p)}>
+                      <Button size="small" onClick={() => activate(p)} sx={{ px: 0.75 }}>
                         Aktiv et
                       </Button>
                     )}
                     <Box flex={1} />
                     <Tooltip title="Redaktə">
                       <IconButton size="small" component={RouterLink} to={`/programs/${p.id}/edit`}>
-                        <EditRounded fontSize="small" />
+                        <EditOutlined fontSize="small" />
                       </IconButton>
                     </Tooltip>
                     <Tooltip title="Sil">

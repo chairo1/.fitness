@@ -375,15 +375,12 @@ export default function BodyModel3D({
           height={compact ? 480 : 620}
           onPointerDown={onPointerDown}
           sx={{
-            borderRadius: 4,
+            borderRadius: '4px',
             overflow: 'hidden',
             cursor: hovered ? 'pointer' : 'grab',
             '&:active': { cursor: hovered ? 'pointer' : 'grabbing' },
             touchAction: 'pan-y', // vertical swipes still scroll the page on phones
-            background:
-              theme.palette.mode === 'dark'
-                ? 'radial-gradient(ellipse at 50% 45%, rgba(255,255,255,0.14), transparent 70%)'
-                : 'radial-gradient(ellipse at 50% 45%, rgba(255,255,255,0.95), transparent 72%)',
+            background: theme.tokens.sunken,
           }}
         >
           <ModelCanvas angle={angle} stateOf={stateOf} onHover={setHovered} onPick={onPick} onFail={onUnsupported} />
@@ -437,7 +434,7 @@ export default function BodyModel3D({
                 onMouseEnter={() => setHoveredGroup(g)}
                 onMouseLeave={() => setHoveredGroup(null)}
                 onClick={() => navigate(exercisesUrl(g))}
-                sx={{ borderRadius: 2, mb: 0.5 }}
+                sx={{ borderBottom: `1px solid ${theme.tokens.rule}`, py: 0.75 }}
               >
                 <ListItemText
                   primary={MUSCLE_LABELS[g]}

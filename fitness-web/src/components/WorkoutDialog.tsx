@@ -23,6 +23,7 @@ import { useEffect, useState } from 'react';
 import { api, errorMessage } from '../api/client';
 import type { ProgramDay, Workout } from '../api/types';
 import { notify } from '../store/ui';
+import { FONT_MONO } from '../theme';
 import { fmtVolume, today } from '../utils/format';
 import ExerciseSelect from './ExerciseSelect';
 
@@ -144,7 +145,7 @@ export default function WorkoutDialog({
         },
         d.id,
       );
-      notify(d.id ? 'Məşq yeniləndi' : 'Məşq əlavə olundu 💪');
+      notify(d.id ? 'Məşq yeniləndi' : 'Məşq yazıldı');
       onSaved(saved);
     } catch (e) {
       setError(errorMessage(e));
@@ -167,7 +168,7 @@ export default function WorkoutDialog({
         <Stack gap={2}>
           {error && <Alert severity="error">{error}</Alert>}
           {d.programDayId && !d.id && (
-            <Alert severity="info">Proqram planı əsasında dolduruldu — real nəticələrinizi yazın.</Alert>
+            <Alert severity="info">Proqram planından dolduruldu. Faktiki təkrar və çəkini düzəldin.</Alert>
           )}
           <Stack direction={{ xs: 'column', sm: 'row' }} gap={2}>
             <TextField
@@ -197,10 +198,10 @@ export default function WorkoutDialog({
           </Stack>
 
           {d.blocks.map((b, bi) => (
-            <Paper key={b.key} variant="outlined" sx={{ p: 2, bgcolor: 'action.hover', boxShadow: 'none' }}>
+            <Paper key={b.key} variant="outlined" sx={{ p: 2, bgcolor: 'background.default' }}>
               <Stack direction="row" gap={1} alignItems="center" mb={1.5}>
-                <Typography fontWeight={700} color="text.secondary" width={24}>
-                  {bi + 1}.
+                <Typography fontWeight={600} color="text.secondary" width={24} sx={{ fontFamily: FONT_MONO }}>
+                  {bi + 1}
                 </Typography>
                 <ExerciseSelect value={b.exerciseId} onChange={(id) => updateBlock(b.key, (x) => ({ ...x, exerciseId: id }))} />
                 <IconButton
@@ -280,7 +281,7 @@ export default function WorkoutDialog({
       </DialogContent>
       <DialogActions sx={{ px: 3, py: 2 }}>
         <Typography color="text.secondary" flex={1}>
-          Ümumi həcm: <b>{fmtVolume(volume)}</b>
+          Ümumi həcm: <Box component="b" sx={{ fontFamily: FONT_MONO, color: 'text.primary' }}>{fmtVolume(volume)}</Box>
         </Typography>
         <Button onClick={onClose}>Ləğv et</Button>
         <Button variant="contained" onClick={save} disabled={busy}>

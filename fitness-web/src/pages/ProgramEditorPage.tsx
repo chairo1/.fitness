@@ -2,7 +2,6 @@ import AddRounded from '@mui/icons-material/AddRounded';
 import ArrowBackRounded from '@mui/icons-material/ArrowBackRounded';
 import CloseRounded from '@mui/icons-material/CloseRounded';
 import ContentCopyRounded from '@mui/icons-material/ContentCopyRounded';
-import HotelRounded from '@mui/icons-material/HotelRounded';
 import {
   Alert,
   Box,
@@ -26,7 +25,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { api, errorMessage } from '../api/client';
 import type { ProgramInput, ProgramType } from '../api/types';
 import ExerciseSelect from '../components/ExerciseSelect';
-import { Loading, PageHeader } from '../components/common';
+import { Loading, Num, PageHeader } from '../components/common';
 import { notify } from '../store/ui';
 import { fmtDateShort, ordinal, today, weekday } from '../utils/format';
 
@@ -181,7 +180,7 @@ export default function ProgramEditorPage() {
         </Alert>
       )}
 
-      <Card sx={{ mb: 2.5 }}>
+      <Card sx={{ mb: 3 }}>
         <CardContent>
           <Grid container spacing={2}>
             <Grid item xs={12} md={5}>
@@ -265,22 +264,21 @@ export default function ProgramEditorPage() {
           const rest = !day?.exercises.length;
           return (
             <Grid item xs={12} md={6} xl={4} key={k}>
-              <Card sx={{ height: '100%', opacity: rest ? 0.85 : 1 }}>
+              <Card sx={{ height: '100%', borderTop: (t) => `${rest ? 1 : 3}px solid ${rest ? t.tokens.ruleStrong : t.tokens.ink}` }}>
                 <CardContent>
                   <Stack direction="row" alignItems="baseline" justifyContent="space-between" mb={1.5}>
-                    <Typography fontWeight={700}>
-                      {ordinal(d)} gün · {weekday(date)}
+                    <Typography variant="h6" component="h3">
+                      {weekday(date)}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {fmtDateShort(date)}
-                    </Typography>
+                    <Num sx={{ fontSize: 13, color: 'text.secondary' }}>
+                      {ordinal(d)} gün · {fmtDateShort(date)}
+                    </Num>
                   </Stack>
 
                   {rest ? (
-                    <Stack alignItems="center" gap={1} py={2} color="text.secondary">
-                      <HotelRounded />
-                      <Typography variant="body2">İstirahət günü</Typography>
-                    </Stack>
+                    <Typography color="text.secondary" py={1.5}>
+                      İstirahət günü — hərəkət əlavə etsəniz, məşq gününə çevriləcək.
+                    </Typography>
                   ) : (
                     <Stack gap={1.5}>
                       <TextField
@@ -291,7 +289,7 @@ export default function ProgramEditorPage() {
                         onChange={(e) => updateDay(k, (x) => ({ ...x, title: e.target.value }))}
                       />
                       {day.exercises.map((e) => (
-                        <Box key={e.key} sx={{ p: 1.5, borderRadius: 3, bgcolor: 'action.hover' }}>
+                        <Box key={e.key} sx={{ p: 1.5, borderRadius: '4px', bgcolor: 'action.hover' }}>
                           <Stack direction="row" gap={1} alignItems="center" mb={1}>
                             <ExerciseSelect value={e.exerciseId} onChange={(v) => updateEx(k, e.key, { exerciseId: v })} />
                             <IconButton

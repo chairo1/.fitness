@@ -1,9 +1,3 @@
-import ArrowBackRounded from '@mui/icons-material/ArrowBackRounded';
-import BadgeRounded from '@mui/icons-material/BadgeRounded';
-import BlockRounded from '@mui/icons-material/BlockRounded';
-import GroupRounded from '@mui/icons-material/GroupRounded';
-import KeyRounded from '@mui/icons-material/KeyRounded';
-import SpaceDashboardRounded from '@mui/icons-material/SpaceDashboardRounded';
 import { Box, Button, Card, CardContent, Stack, Typography } from '@mui/material';
 import { Navigate, Outlet, Route, Routes } from 'react-router-dom';
 import AppProviders from '../components/AppProviders';
@@ -17,23 +11,22 @@ import RolesPage from './RolesPage';
 import UsersPage from './UsersPage';
 
 const NAV: (NavItem & { permission: string })[] = [
-  { to: '/', label: 'İcmal', icon: <SpaceDashboardRounded />, permission: 'admin.access' },
-  { to: '/users', label: 'İstifadəçilər', icon: <GroupRounded />, permission: 'users.read' },
-  { to: '/roles', label: 'Rollar', icon: <BadgeRounded />, permission: 'roles.read' },
-  { to: '/permissions', label: 'Səlahiyyətlər', icon: <KeyRounded />, permission: 'permissions.read' },
+  { to: '/', label: 'İcmal', permission: 'admin.access' },
+  { to: '/users', label: 'İstifadəçilər', permission: 'users.read' },
+  { to: '/roles', label: 'Rollar', permission: 'roles.read' },
+  { to: '/permissions', label: 'Səlahiyyətlər', permission: 'permissions.read' },
 ];
 
 function NoAccess({ text }: { text: string }) {
   const logout = useAuthStore((s) => s.logout);
   return (
     <Box minHeight="100vh" display="grid" sx={{ placeItems: 'center', p: 2 }}>
-      <Card sx={{ maxWidth: 420, width: '100%' }}>
+      <Card sx={{ maxWidth: 440, width: '100%' }}>
         <CardContent sx={{ p: 4 }}>
-          <Stack alignItems="center" gap={2} textAlign="center">
-            <BlockRounded color="error" sx={{ fontSize: 48 }} />
-            <Typography variant="h5">Giriş qadağandır</Typography>
+          <Stack gap={2}>
+            <Typography variant="h4">Giriş qadağandır</Typography>
             <Typography color="text.secondary">{text}</Typography>
-            <Stack direction="row" gap={1}>
+            <Stack direction="row" gap={1} flexWrap="wrap">
               <Button href={appUrl()}>Tətbiqə qayıt</Button>
               <Button variant="contained" onClick={logout}>
                 Başqa hesabla daxil ol
@@ -64,9 +57,9 @@ function AdminLayout() {
   return (
     <Layout
       nav={NAV.filter((n) => can(n.permission))}
-      brand="Admin panel"
+      brand="Admin"
       sidebarExtra={
-        <Button variant="outlined" startIcon={<ArrowBackRounded />} href={appUrl()} fullWidth>
+        <Button variant="outlined" href={appUrl()} fullWidth>
           Tətbiqə qayıt
         </Button>
       }

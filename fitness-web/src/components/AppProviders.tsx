@@ -4,7 +4,6 @@ import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
 import { useToastStore, useUiStore } from '../store/ui';
 import { createAppTheme } from '../theme';
-import GlassBackground from './GlassBackground';
 
 function Toasts() {
   const { toast, clear } = useToastStore();
@@ -17,7 +16,7 @@ function Toasts() {
       anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
     >
       {toast ? (
-        <Alert severity={toast.severity} variant="filled" onClose={clear} sx={{ borderRadius: 3 }}>
+        <Alert severity={toast.severity} variant="filled" onClose={clear}>
           {toast.message}
         </Alert>
       ) : undefined}
@@ -25,7 +24,7 @@ function Toasts() {
   );
 }
 
-/** Theme, glass background, toasts and profile refresh shared by the user app and the admin panel. */
+/** Theme, toasts and profile refresh shared by the user app and the admin panel. */
 export default function AppProviders({ children }: { children: ReactNode }) {
   const mode = useUiStore((s) => s.mode);
   const theme = useMemo(() => createAppTheme(mode), [mode]);
@@ -40,7 +39,6 @@ export default function AppProviders({ children }: { children: ReactNode }) {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <GlassBackground />
       {children}
       <Toasts />
     </ThemeProvider>

@@ -242,12 +242,9 @@ export default function BodyMap({ sets = {} }: { sets?: Partial<Record<MuscleGro
         <Box
           onPointerDown={onBackgroundDown}
           sx={{
-            borderRadius: 4,
+            borderRadius: '4px',
             py: 2,
-            background:
-              theme.palette.mode === 'dark'
-                ? 'radial-gradient(ellipse at 50% 45%, rgba(255,255,255,0.12), transparent 70%)'
-                : 'radial-gradient(ellipse at 50% 45%, rgba(255,255,255,0.9), transparent 72%)',
+            background: theme.tokens.sunken,
           }}
         >
           <Box
@@ -286,7 +283,7 @@ export default function BodyMap({ sets = {} }: { sets?: Partial<Record<MuscleGro
                 onMouseEnter={() => setHoveredGroup(g)}
                 onMouseLeave={() => setHoveredGroup(null)}
                 onClick={() => navigate(exercisesUrl(g))}
-                sx={{ borderRadius: 2, mb: 0.5 }}
+                sx={{ borderBottom: `1px solid ${theme.tokens.rule}`, py: 0.75 }}
               >
                 <ListItemText
                   primary={MUSCLE_LABELS[g]}

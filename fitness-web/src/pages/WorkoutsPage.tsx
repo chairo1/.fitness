@@ -2,14 +2,13 @@ import AddRounded from '@mui/icons-material/AddRounded';
 import ChevronLeftRounded from '@mui/icons-material/ChevronLeftRounded';
 import ChevronRightRounded from '@mui/icons-material/ChevronRightRounded';
 import DeleteOutlineRounded from '@mui/icons-material/DeleteOutlineRounded';
-import EditRounded from '@mui/icons-material/EditRounded';
-import EventNoteRounded from '@mui/icons-material/EventNoteRounded';
-import { Box, Button, Card, CardContent, Chip, IconButton, Stack, Tooltip, Typography } from '@mui/material';
+import EditOutlined from '@mui/icons-material/EditOutlined';
+import { Box, Button, IconButton, Stack, Tooltip, Typography, useTheme } from '@mui/material';
 import dayjs from 'dayjs';
 import { useState } from 'react';
 import { api, errorMessage } from '../api/client';
 import type { Workout } from '../api/types';
-import { EmptyState, Loading, PageHeader } from '../components/common';
+import { EmptyState, Loading, Num, PageHeader, Panel } from '../components/common';
 import WorkoutDialog, { draftFromWorkout, emptyDraft, type WorkoutDraft } from '../components/WorkoutDialog';
 import { notify } from '../store/ui';
 import { fmtMonth, fmtNum, fmtVolume, weekdayShort } from '../utils/format';
@@ -31,6 +30,7 @@ function summary(w: Workout) {
 }
 
 export default function WorkoutsPage() {
+  const tk = useTheme().tokens;
   const [month, setMonth] = useState(() => dayjs().startOf('month'));
   const from = month.format('YYYY-MM-DD');
   const to = month.endOf('month').format('YYYY-MM-DD');
@@ -40,6 +40,7 @@ export default function WorkoutsPage() {
   const workouts = data ?? [];
   const totalVolume = workouts.reduce((s, w) => s + volumeOf(w), 0);
   const totalMinutes = workouts.reduce((s, w) => s + (w.durationMin ?? 0), 0);
+  const isCurrent = month.isSame(dayjs(), 'month');
 
   const remove = async (w: Workout) => {
     if (!confirm(`"${w.title}" məşqi silinsin?`)) return;
@@ -52,11 +53,19 @@ export default function WorkoutsPage() {
     }
   };
 
+  const meta = [
+    `${workouts.length} məşq`,
+    totalVolume ? fmtVolume(totalVolume) : null,
+    totalMinutes ? `${fmtNum(totalMinutes)} dəq` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
   return (
     <>
       <PageHeader
         title="Məşqlər"
-        subtitle="Zalda etdiyiniz bütün məşqlərin jurnalı"
+        subtitle="Zalda etdiyiniz hər məşqin jurnalı"
         action={
           <Button variant="contained" startIcon={<AddRounded />} onClick={() => setDraft(emptyDraft())}>
             Məşq əlavə et
@@ -64,110 +73,101 @@ export default function WorkoutsPage() {
         }
       />
 
-      <Card sx={{ mb: 2.5 }}>
-        <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
-          <Stack direction={{ xs: 'column', sm: 'row' }} alignItems="center" gap={2}>
-            <Stack direction="row" alignItems="center" gap={1}>
-              <IconButton onClick={() => setMonth(month.subtract(1, 'month'))}>
-                <ChevronLeftRounded />
-              </IconButton>
-              <Typography variant="h6" minWidth={160} textAlign="center">
-                {fmtMonth(month)}
-              </Typography>
-              <IconButton onClick={() => setMonth(month.add(1, 'month'))} disabled={month.isSame(dayjs(), 'month')}>
-                <ChevronRightRounded />
-              </IconButton>
-            </Stack>
-            <Box flex={1} />
-            <Stack direction="row" gap={1} flexWrap="wrap" justifyContent="center">
-              <Chip label={`${workouts.length} məşq`} color="primary" variant="outlined" />
-              <Chip label={`Həcm: ${fmtVolume(totalVolume)}`} variant="outlined" />
-              <Chip label={`${fmtNum(totalMinutes)} dəq`} variant="outlined" />
-            </Stack>
+      <Panel
+        title={
+          <Stack direction="row" alignItems="center" gap={0.5}>
+            <IconButton size="small" onClick={() => setMonth(month.subtract(1, 'month'))} aria-label="Əvvəlki ay">
+              <ChevronLeftRounded />
+            </IconButton>
+            <Typography variant="h6" component="h2" minWidth={150} textAlign="center">
+              {fmtMonth(month)}
+            </Typography>
+            <IconButton size="small" onClick={() => setMonth(month.add(1, 'month'))} disabled={isCurrent} aria-label="Növbəti ay">
+              <ChevronRightRounded />
+            </IconButton>
           </Stack>
-        </CardContent>
-      </Card>
-
-      {loading && !data ? (
-        <Loading />
-      ) : workouts.length === 0 ? (
-        <Card>
-          <EmptyState
-            icon={<EventNoteRounded fontSize="inherit" />}
-            text="Bu ay üçün məşq qeyd olunmayıb"
-            action={
-              <Button variant="outlined" onClick={() => setDraft(emptyDraft())}>
-                Məşq əlavə et
-              </Button>
-            }
-          />
-        </Card>
-      ) : (
-        <Stack gap={1.5}>
-          {workouts.map((w) => (
-            <Card key={w.id}>
-              <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                <Stack direction="row" gap={2} alignItems="flex-start">
-                  <Box
-                    sx={{
-                      width: 56,
-                      flexShrink: 0,
-                      textAlign: 'center',
-                      borderRadius: 3,
-                      py: 1,
-                      bgcolor: 'action.hover',
-                    }}
-                  >
-                    <Typography variant="caption" color="text.secondary" display="block">
-                      {weekdayShort(w.date)}
+        }
+        action={
+          <Typography variant="body2" color="text.secondary" textAlign="right">
+            {meta}
+          </Typography>
+        }
+        flush
+      >
+        {loading && !data ? (
+          <Loading />
+        ) : workouts.length === 0 ? (
+          <Box px={{ xs: 2, sm: 2.75 }}>
+            <EmptyState
+              text={isCurrent ? 'Bu ay hələ məşq yazılmayıb.' : 'Bu ay üçün məşq yoxdur.'}
+              action={
+                isCurrent && (
+                  <Button variant="outlined" onClick={() => setDraft(emptyDraft())}>
+                    Məşq əlavə et
+                  </Button>
+                )
+              }
+            />
+          </Box>
+        ) : (
+          workouts.map((w, i) => (
+            <Stack
+              key={w.id}
+              direction="row"
+              gap={{ xs: 1.5, sm: 2.5 }}
+              alignItems="flex-start"
+              px={{ xs: 2, sm: 2.75 }}
+              py={2}
+              sx={{ borderTop: i ? `1px solid ${tk.rule}` : 0 }}
+            >
+              <Box width={48} flexShrink={0} pt={0.25}>
+                <Num sx={{ display: 'block', fontSize: 24, fontWeight: 600, lineHeight: 1 }}>{dayjs(w.date).date()}</Num>
+                <Num sx={{ fontSize: 12.5, color: 'text.secondary' }}>{weekdayShort(w.date)}</Num>
+              </Box>
+              <Box flex={1} minWidth={0}>
+                <Stack direction="row" alignItems="baseline" gap={1.25} flexWrap="wrap">
+                  <Typography fontWeight={600} fontSize={17}>
+                    {w.title}
+                  </Typography>
+                  {w.programDayId && (
+                    <Typography variant="body2" color="text.secondary">
+                      proqramdan
                     </Typography>
-                    <Typography variant="h6" lineHeight={1}>
-                      {dayjs(w.date).date()}
-                    </Typography>
-                  </Box>
-                  <Box flex={1} minWidth={0}>
-                    <Stack direction="row" alignItems="center" gap={1} flexWrap="wrap">
-                      <Typography variant="subtitle1">{w.title}</Typography>
-                      {w.programDayId && <Chip size="small" color="primary" label="Proqram" />}
-                    </Stack>
-                    <Typography variant="body2" color="text.secondary" mb={1}>
-                      {w.sets.length} set · {fmtVolume(volumeOf(w))}
-                      {w.durationMin ? ` · ${w.durationMin} dəq` : ''}
-                    </Typography>
-                    <Stack direction="row" gap={0.75} flexWrap="wrap">
-                      {summary(w).map((s, i) => (
-                        <Chip
-                          key={i}
-                          size="small"
-                          variant="outlined"
-                          label={`${s.name} · ${s.sets}×${s.best ? ` ${fmtNum(s.best, 1)}kg` : ''}`}
-                        />
-                      ))}
-                    </Stack>
-                    {w.notes && (
-                      <Typography variant="body2" color="text.secondary" mt={1} fontStyle="italic">
-                        {w.notes}
-                      </Typography>
-                    )}
-                  </Box>
-                  <Stack direction={{ xs: 'column', sm: 'row' }}>
-                    <Tooltip title="Redaktə">
-                      <IconButton onClick={() => setDraft(draftFromWorkout(w))}>
-                        <EditRounded fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                    <Tooltip title="Sil">
-                      <IconButton onClick={() => remove(w)}>
-                        <DeleteOutlineRounded fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                  </Stack>
+                  )}
                 </Stack>
-              </CardContent>
-            </Card>
-          ))}
-        </Stack>
-      )}
+                <Typography variant="body2" color="text.secondary" mt={0.5}>
+                  {summary(w)
+                    .map((s) => `${s.name} ${s.sets}×${s.best ? ` ${fmtNum(s.best, 1)} kg` : ''}`)
+                    .join(' · ')}
+                </Typography>
+                {w.notes && (
+                  <Typography variant="body2" mt={1} sx={{ pl: 1.5, borderLeft: `2px solid ${tk.rule}` }}>
+                    {w.notes}
+                  </Typography>
+                )}
+              </Box>
+              <Box textAlign="right" flexShrink={0}>
+                <Num sx={{ display: 'block', fontWeight: 600 }}>{volumeOf(w) ? fmtVolume(volumeOf(w)) : '—'}</Num>
+                <Typography variant="body2" color="text.secondary" whiteSpace="nowrap">
+                  {w.sets.length} set{w.durationMin ? ` · ${w.durationMin} dəq` : ''}
+                </Typography>
+              </Box>
+              <Stack direction={{ xs: 'column', sm: 'row' }} flexShrink={0} mt={-0.5} mr={-1}>
+                  <Tooltip title="Redaktə">
+                    <IconButton size="small" onClick={() => setDraft(draftFromWorkout(w))}>
+                      <EditOutlined fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Sil">
+                    <IconButton size="small" onClick={() => remove(w)}>
+                      <DeleteOutlineRounded fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+              </Stack>
+            </Stack>
+          ))
+        )}
+      </Panel>
 
       <WorkoutDialog
         open={!!draft}

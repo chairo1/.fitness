@@ -2,8 +2,11 @@ import { Controller, Get, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { AccessModule } from './access/access.module';
+import { AdminModule } from './admin/admin.module';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
+import { PermissionsGuard } from './auth/permissions.guard';
 import { Public } from './auth/public.decorator';
 import { ExercisesModule } from './exercises/exercises.module';
 import { MetricsModule } from './metrics/metrics.module';
@@ -37,6 +40,7 @@ class HealthController {
         synchronize: c.get('DB_SYNC', 'true') === 'true',
       }),
     }),
+    AccessModule,
     AuthModule,
     UsersModule,
     ExercisesModule,
@@ -44,8 +48,13 @@ class HealthController {
     ProgramsModule,
     MetricsModule,
     StatsModule,
+    AdminModule,
   ],
   controllers: [HealthController],
-  providers: [{ provide: APP_GUARD, useClass: JwtAuthGuard }],
+  // Guards run in order: authenticate first, then check @RequirePermissions.
+  providers: [
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: PermissionsGuard },
+  ],
 })
 export class AppModule {}

@@ -6,7 +6,16 @@ export interface User {
   name: string;
   heightCm: number | null;
   goalWeightKg: number | null;
+  isActive: boolean;
+  lastLoginAt: string | null;
   createdAt: string;
+  roles: RoleRef[];
+  permissions: string[];
+}
+
+export interface RoleRef {
+  id: string;
+  name: string;
 }
 
 export interface AuthResponse {

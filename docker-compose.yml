@@ -34,6 +34,10 @@ services:
       DB_SYNC: ${DB_SYNC:-true}
       JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      # Created/promoted on startup only while no active administrator exists.
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@fitness.local}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin12345}
+      ADMIN_NAME: ${ADMIN_NAME:-Administrator}
     depends_on:
       db:
         condition: service_healthy

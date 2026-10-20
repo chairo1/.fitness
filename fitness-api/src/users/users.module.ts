@@ -2,6 +2,7 @@ import { Body, Controller, Get, Module, NotFoundException, Patch } from '@nestjs
 import { InjectRepository, TypeOrmModule } from '@nestjs/typeorm';
 import { IsNotEmpty, IsNumber, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 import { Repository } from 'typeorm';
+import { AccessService } from '../access/access.service';
 import { AuthUser, CurrentUser } from '../auth/current-user.decorator';
 import { User } from './user.entity';
 
@@ -18,11 +19,14 @@ class UpdateProfileDto {
 
 @Controller('users')
 class UsersController {
-  constructor(@InjectRepository(User) private readonly users: Repository<User>) {}
+  constructor(
+    @InjectRepository(User) private readonly users: Repository<User>,
+    private readonly access: AccessService,
+  ) {}
 
   @Get('me')
   async me(@CurrentUser() u: AuthUser) {
-    const user = await this.users.findOne({ where: { id: u.id } });
+    const user = await this.access.profile(u.id);
     if (!user) throw new NotFoundException();
     return user;
   }

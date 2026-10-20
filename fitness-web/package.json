@@ -14,11 +14,13 @@
     "@mui/icons-material": "^5.16.7",
     "@mui/material": "^5.16.7",
     "@mui/x-charts": "^7.22.0",
+    "@types/three": "^0.169.0",
     "axios": "^1.7.7",
     "dayjs": "^1.11.13",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.27.0",
+    "three": "^0.169.0",
     "zustand": "^4.5.5"
   },
   "devDependencies": {

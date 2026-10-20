@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { User } from '../api/types';
@@ -22,3 +23,9 @@ export const useAuthStore = create<AuthState>()(
     { name: 'fitness-auth' },
   ),
 );
+
+/** UI-side permission check; the API enforces the same codes. */
+export function useCan() {
+  const permissions = useAuthStore((s) => s.user?.permissions);
+  return useCallback((code: string) => !!permissions?.includes(code), [permissions]);
+}

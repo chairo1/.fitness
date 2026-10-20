@@ -1,0 +1,60 @@
+{
+  "expo": {
+    "name": "Fitness",
+    "slug": "fitness-mobile",
+    "version": "1.0.0",
+    "scheme": "fitness",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "backgroundColor": "#EEF1FB",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.fitness.mobile",
+      "adaptiveIcon": {
+        "backgroundColor": "#4F5BFF",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "@react-native-community/datetimepicker",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 160,
+          "backgroundColor": "#EEF1FB",
+          "dark": {
+            "image": "./assets/splash-icon.png",
+            "backgroundColor": "#090D1C"
+          }
+        }
+      ]
+    ],
+    "extra": {
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "95cb8c34-4c6e-418c-95b4-705b7b56e89b"
+      }
+    }
+  }
+}

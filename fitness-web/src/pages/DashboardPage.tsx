@@ -20,7 +20,7 @@ import {
   useTheme,
 } from '@mui/material';
 import { BarChart, LineChart, PieChart } from '@mui/x-charts';
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { EmptyState, GlassCard, Loading, PageHeader, StatCard } from '../components/common';
@@ -28,6 +28,10 @@ import WorkoutDialog, { draftFromProgramDay, emptyDraft, type WorkoutDraft } fro
 import { useAuthStore } from '../store/auth';
 import { fmtDate, fmtDateShort, fmtNum, fmtVolume, MUSCLE_LABELS, STATUS_META, weekday } from '../utils/format';
 import { useAsync } from '../utils/useAsync';
+import BodyMap from '../components/bodymap/BodyMap';
+
+// three.js + the model are large: load the 3D map only after the dashboard has rendered.
+const BodyModel3D = lazy(() => import('../components/bodymap/BodyModel3D'));
 
 export default function DashboardPage() {
   const theme = useTheme();
@@ -35,11 +39,13 @@ export default function DashboardPage() {
   const user = useAuthStore((s) => s.user);
   const { data, loading, error, reload } = useAsync(api.dashboard);
   const [draft, setDraft] = useState<WorkoutDraft | null>(null);
+  const [use2d, setUse2d] = useState(false); // no WebGL, or the model failed to load
 
   if (loading && !data) return <Loading />;
   if (error || !data) return <EmptyState text={error ?? 'Məlumat yüklənmədi'} />;
 
   const { totals, weekly, records, muscles, recent, body, activeProgram } = data;
+  const muscleSets = Object.fromEntries(muscles.map((m) => [m.muscleGroup, m.sets]));
   const palette = [
     theme.palette.primary.main,
     theme.palette.secondary.main,
@@ -106,6 +112,18 @@ export default function DashboardPage() {
             }
             color="success.main"
           />
+        </Grid>
+
+        <Grid item xs={12}>
+          <GlassCard title="Əzələ xəritəsi">
+            {use2d ? (
+              <BodyMap sets={muscleSets} />
+            ) : (
+              <Suspense fallback={<Loading />}>
+                <BodyModel3D sets={muscleSets} onUnsupported={() => setUse2d(true)} />
+              </Suspense>
+            )}
+          </GlassCard>
         </Grid>
 
         <Grid item xs={12} lg={5}>

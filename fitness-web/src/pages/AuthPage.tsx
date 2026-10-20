@@ -1,3 +1,4 @@
+import AdminPanelSettingsRounded from '@mui/icons-material/AdminPanelSettingsRounded';
 import FitnessCenterRounded from '@mui/icons-material/FitnessCenterRounded';
 import { Alert, Box, Button, Card, CardContent, Link, Stack, TextField, Typography } from '@mui/material';
 import { useState, type ChangeEvent, type FormEvent } from 'react';
@@ -6,7 +7,8 @@ import { api, errorMessage } from '../api/client';
 import { ThemeToggle } from '../components/Layout';
 import { useAuthStore } from '../store/auth';
 
-export default function AuthPage({ mode }: { mode: 'login' | 'register' }) {
+/** `admin` turns this into the admin panel sign-in: login only, and only accounts with `admin.access` get in. */
+export default function AuthPage({ mode, admin = false }: { mode: 'login' | 'register'; admin?: boolean }) {
   const isLogin = mode === 'login';
   const setAuth = useAuthStore((s) => s.setAuth);
   const [form, setForm] = useState({ name: '', email: '', password: '' });
@@ -21,6 +23,10 @@ export default function AuthPage({ mode }: { mode: 'login' | 'register' }) {
       const res = isLogin
         ? await api.login(form.email, form.password)
         : await api.register(form.name, form.email, form.password);
+      if (admin && !res.user.permissions.includes('admin.access')) {
+        setError('Bu hesabın admin panelə giriş səlahiyyəti yoxdur');
+        return;
+      }
       setAuth(res.accessToken, res.user);
     } catch (err) {
       setError(errorMessage(err));
@@ -51,11 +57,15 @@ export default function AuthPage({ mode }: { mode: 'login' | 'register' }) {
                 background: (t) => `linear-gradient(135deg, ${t.palette.primary.main}, ${t.palette.secondary.main})`,
               }}
             >
-              <FitnessCenterRounded />
+              {admin ? <AdminPanelSettingsRounded /> : <FitnessCenterRounded />}
             </Box>
-            <Typography variant="h5">{isLogin ? 'Xoş gəlmisiniz' : 'Hesab yaradın'}</Typography>
+            <Typography variant="h5">{admin ? 'Admin panel' : isLogin ? 'Xoş gəlmisiniz' : 'Hesab yaradın'}</Typography>
             <Typography color="text.secondary" textAlign="center">
-              {isLogin ? 'Nəticələrinizi izləmək üçün daxil olun' : 'İdman nəticələrinizi izləməyə başlayın'}
+              {admin
+                ? 'İdarəetmə üçün administrator hesabı ilə daxil olun'
+                : isLogin
+                  ? 'Nəticələrinizi izləmək üçün daxil olun'
+                  : 'İdman nəticələrinizi izləməyə başlayın'}
             </Typography>
           </Stack>
           <Stack component="form" onSubmit={submit} gap={2}>
@@ -82,12 +92,14 @@ export default function AuthPage({ mode }: { mode: 'login' | 'register' }) {
             <Button type="submit" variant="contained" size="large" disabled={busy}>
               {isLogin ? 'Daxil ol' : 'Qeydiyyatdan keç'}
             </Button>
+            {!admin && (
             <Typography textAlign="center" variant="body2" color="text.secondary">
               {isLogin ? 'Hesabınız yoxdur? ' : 'Artıq hesabınız var? '}
               <Link component={RouterLink} to={isLogin ? '/register' : '/login'} fontWeight={600}>
                 {isLogin ? 'Qeydiyyat' : 'Daxil olun'}
               </Link>
             </Typography>
+            )}
           </Stack>
         </CardContent>
       </Card>

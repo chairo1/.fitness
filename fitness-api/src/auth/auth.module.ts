@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { Role } from '../access/access.entities';
 import { User } from '../users/user.entity';
 import { LoginDto, RegisterDto } from './auth.dto';
 import { AuthService } from './auth.service';
@@ -28,7 +29,7 @@ class AuthController {
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User]),
+    TypeOrmModule.forFeature([User, Role]),
     PassportModule,
     JwtModule.registerAsync({
       inject: [ConfigService],

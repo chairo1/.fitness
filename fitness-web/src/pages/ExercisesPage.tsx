@@ -12,6 +12,7 @@ import {
   DialogContent,
   DialogTitle,
   Grid,
+  Alert,
   IconButton,
   MenuItem,
   Stack,
@@ -21,12 +22,14 @@ import {
 } from '@mui/material';
 import { LineChart } from '@mui/x-charts';
 import { useEffect, useState, type FormEvent } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { api, errorMessage } from '../api/client';
 import type { Exercise, MuscleGroup } from '../api/types';
 import { EmptyState, GlassCard, Loading, PageHeader } from '../components/common';
 import { useExercisesStore } from '../store/exercises';
 import { notify } from '../store/ui';
 import { fmtDateShort, fmtNum, MUSCLE_GROUPS, MUSCLE_LABELS } from '../utils/format';
+import { musclePart } from '../utils/muscles';
 import { useAsync } from '../utils/useAsync';
 
 function ProgressDialog({ exercise, onClose }: { exercise: Exercise; onClose: () => void }) {
@@ -80,7 +83,16 @@ export default function ExercisesPage() {
   const { items, loaded, load, add, remove } = useExercisesStore();
   const [name, setName] = useState('');
   const [group, setGroup] = useState<MuscleGroup>('chest');
-  const [filter, setFilter] = useState<MuscleGroup | 'all'>('all');
+  // The filter lives in the URL so the dashboard body map can deep-link to a muscle group.
+  const [params, setParams] = useSearchParams();
+  const muscle = params.get('muscle') as MuscleGroup | null;
+  const filter: MuscleGroup | 'all' = muscle && MUSCLE_GROUPS.includes(muscle) ? muscle : 'all';
+  const focus = musclePart(params.get('focus'));
+  const setFilter = (g: MuscleGroup | 'all') => setParams(g === 'all' ? {} : { muscle: g });
+  // Pre-select the browsed group for a new custom exercise.
+  useEffect(() => {
+    if (muscle && MUSCLE_GROUPS.includes(muscle)) setGroup(muscle);
+  }, [muscle]);
   const [selected, setSelected] = useState<Exercise | null>(null);
 
   useEffect(() => {
@@ -141,6 +153,12 @@ export default function ExercisesPage() {
         </CardContent>
       </Card>
 
+      {focus && filter === focus.group && (
+        <Alert severity="info" sx={{ mb: 2 }} onClose={() => setFilter(focus.group)}>
+          <b>{focus.name}</b> <i>({focus.latin})</i> — {MUSCLE_LABELS[focus.group]} qrupunun hərəkətləri
+        </Alert>
+      )}
+
       <Stack direction="row" gap={1} mb={2.5} flexWrap="wrap">
         <Chip label="Hamısı" color={filter === 'all' ? 'primary' : 'default'} onClick={() => setFilter('all')} />
         {MUSCLE_GROUPS.map((g) => (
@@ -152,6 +170,13 @@ export default function ExercisesPage() {
         <Loading />
       ) : (
         <Grid container spacing={2.5}>
+          {visible.length === 0 && (
+            <Grid item xs={12}>
+              <Card>
+                <EmptyState text="Bu qrup üçün hələ hərəkət yoxdur — yuxarıdan öz hərəkətinizi əlavə edin" />
+              </Card>
+            </Grid>
+          )}
           {visible.map(({ g, list }) => (
             <Grid item xs={12} md={6} xl={4} key={g}>
               <GlassCard title={MUSCLE_LABELS[g]} action={<Chip size="small" label={list.length} />}>

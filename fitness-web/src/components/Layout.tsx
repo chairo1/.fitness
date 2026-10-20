@@ -1,12 +1,8 @@
-import CalendarMonthRounded from '@mui/icons-material/CalendarMonthRounded';
 import DarkModeRounded from '@mui/icons-material/DarkModeRounded';
-import DashboardRounded from '@mui/icons-material/DashboardRounded';
 import FitnessCenterRounded from '@mui/icons-material/FitnessCenterRounded';
 import LightModeRounded from '@mui/icons-material/LightModeRounded';
-import ListAltRounded from '@mui/icons-material/ListAltRounded';
 import LogoutRounded from '@mui/icons-material/LogoutRounded';
 import MenuRounded from '@mui/icons-material/MenuRounded';
-import MonitorWeightRounded from '@mui/icons-material/MonitorWeightRounded';
 import {
   AppBar,
   Avatar,
@@ -24,20 +20,18 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/auth';
 import { useUiStore } from '../store/ui';
 
 const DRAWER = 260;
 
-const NAV = [
-  { to: '/', label: 'Əsas səhifə', icon: <DashboardRounded /> },
-  { to: '/workouts', label: 'Məşqlər', icon: <ListAltRounded /> },
-  { to: '/programs', label: 'Proqramlar', icon: <CalendarMonthRounded /> },
-  { to: '/exercises', label: 'Hərəkətlər', icon: <FitnessCenterRounded /> },
-  { to: '/body', label: 'Bədən ölçüləri', icon: <MonitorWeightRounded /> },
-];
+export interface NavItem {
+  to: string;
+  label: string;
+  icon: ReactNode;
+}
 
 export function ThemeToggle() {
   const { mode, toggleMode } = useUiStore();
@@ -48,7 +42,7 @@ export function ThemeToggle() {
   );
 }
 
-function Brand() {
+function Brand({ label }: { label: string }) {
   return (
     <Stack direction="row" alignItems="center" gap={1.5} px={1}>
       <Box
@@ -65,13 +59,21 @@ function Brand() {
         <FitnessCenterRounded fontSize="small" />
       </Box>
       <Typography variant="h6" fontWeight={800}>
-        Fitness Coach
+        {label}
       </Typography>
     </Stack>
   );
 }
 
-export default function Layout() {
+export default function Layout({
+  nav: items,
+  brand,
+  sidebarExtra,
+}: {
+  nav: NavItem[];
+  brand: string;
+  sidebarExtra?: ReactNode;
+}) {
   const theme = useTheme();
   const desktop = useMediaQuery(theme.breakpoints.up('md'));
   const [open, setOpen] = useState(false);
@@ -81,10 +83,10 @@ export default function Layout() {
   const nav = (
     <Stack height="100%" p={2} gap={3}>
       <Box pt={1}>
-        <Brand />
+        <Brand label={brand} />
       </Box>
       <List sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-        {NAV.map((n) => {
+        {items.map((n) => {
           const active = n.to === '/' ? pathname === '/' : pathname.startsWith(n.to);
           return (
             <ListItemButton
@@ -108,6 +110,7 @@ export default function Layout() {
         })}
       </List>
       <Box flex={1} />
+      {sidebarExtra}
       <Stack direction="row" alignItems="center" gap={1.5} p={1.5} sx={{ borderRadius: 3, bgcolor: 'action.hover' }}>
         <Avatar sx={{ bgcolor: 'primary.main', width: 36, height: 36 }}>{user?.name?.[0]?.toUpperCase()}</Avatar>
         <Box minWidth={0} flex={1}>
@@ -145,7 +148,7 @@ export default function Layout() {
                 <IconButton edge="start" onClick={() => setOpen(true)}>
                   <MenuRounded />
                 </IconButton>
-                <Brand />
+                <Brand label={brand} />
               </>
             )}
             <Box flex={1} />

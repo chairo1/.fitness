@@ -24,7 +24,7 @@ class StatsService {
     const monthStart = `${today.slice(0, 8)}01`;
     const chartFrom = addDays(weekStart, -7 * (WEEKS_IN_CHART - 1));
 
-    const [totals, volume, weeklyRows, weekRows, records, muscles, recent, body, activeProgram] = await Promise.all([
+    const [totals, volume, weeklyRows, weekRows, records, muscles, recent, body, activeProgram, weekDays] = await Promise.all([
       this.ds.query(
         `SELECT COUNT(*)::int AS "total",
                 COUNT(*) FILTER (WHERE date >= $2)::int AS "thisWeek",
@@ -66,7 +66,8 @@ class StatsService {
         [userId],
       ),
       this.ds.query(
-        `SELECT e."muscleGroup" AS "muscleGroup", COUNT(*)::int AS "sets"
+        `SELECT e."muscleGroup" AS "muscleGroup", COUNT(*)::int AS "sets",
+                to_char(MAX(w.date), 'YYYY-MM-DD') AS "lastDate"
          FROM workout_sets s
          JOIN workouts w ON w.id = s."workoutId"
          JOIN exercises e ON e.id = s."exerciseId"
@@ -85,6 +86,11 @@ class StatsService {
       ),
       this.ds.getRepository(BodyMetric).find({ where: { userId }, order: { date: 'DESC', createdAt: 'DESC' }, take: 20 }),
       this.programs.getActive(userId),
+      this.ds.query(
+        `SELECT DISTINCT to_char(date, 'YYYY-MM-DD') AS "date" FROM workouts
+         WHERE "userId" = $1 AND date >= $2 AND date <= $3 ORDER BY 1`,
+        [userId, weekStart, addDays(weekStart, 6)],
+      ),
     ]);
 
     const byWeek = new Map<string, { workouts: number; volume: number }>(weeklyRows.map((r) => [r.week, r]));
@@ -104,8 +110,13 @@ class StatsService {
     }
 
     let program = null;
+    let weekPlan: { date: string; title: string; status: string }[] = [];
     if (activeProgram) {
       const { days, ...rest } = activeProgram;
+      const weekEnd = addDays(weekStart, 6);
+      weekPlan = days
+        .filter((d) => d.date >= weekStart && d.date <= weekEnd)
+        .map((d) => ({ date: d.date, title: d.title, status: d.status }));
       const nextDay = days.find((d) => d.status === 'today') ?? days.find((d) => d.status === 'upcoming') ?? null;
       program = { ...rest, nextDay };
     }
@@ -113,6 +124,10 @@ class StatsService {
     return {
       totals: { ...totals[0], ...volume[0], weekStreak },
       weekly,
+      // Days of the current week (Mon–Sun) that have a workout.
+      weekDays: weekDays.map((r) => r.date),
+      // Active program days that fall in the current week.
+      weekPlan,
       records,
       muscles,
       recent,

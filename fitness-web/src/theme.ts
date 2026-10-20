@@ -18,6 +18,11 @@ export interface Tokens {
   ruleStrong: string;
   red: string;
   redInk: string;
+  /** Solid red for filled buttons: dark enough for white text (≈6:1). */
+  action: string;
+  actionHover: string;
+  /** App bar: ink in both themes. */
+  bar: string;
   green: string;
 }
 
@@ -32,6 +37,9 @@ export const TOKENS: Record<'light' | 'dark', Tokens> = {
     ruleStrong: '#b9b2a2',
     red: '#e5432b',
     redInk: '#b3311c',
+    action: '#d43a22',
+    actionHover: '#b3311c',
+    bar: '#17160f',
     green: '#2f6b46',
   },
   dark: {
@@ -44,6 +52,9 @@ export const TOKENS: Record<'light' | 'dark', Tokens> = {
     ruleStrong: '#4a473d',
     red: '#f0583c',
     redInk: '#ff8a73',
+    action: '#d43a22',
+    actionHover: '#e5432b',
+    bar: '#0b0a07',
     green: '#6fbf8c',
   },
 };
@@ -65,8 +76,8 @@ export function createAppTheme(mode: 'light' | 'dark') {
     tokens: t,
     palette: {
       mode,
-      // Primary is ink: solid buttons, selection and progress read as print, not as a brand colour.
-      primary: { main: t.ink, contrastText: t.paper },
+      // Red drives action (buttons, progress, the current item); ink stays the structure.
+      primary: { main: t.action, dark: t.actionHover, contrastText: '#fff' },
       secondary: { main: t.red, contrastText: '#fff' },
       success: { main: t.green },
       warning: { main: dark ? '#d9a441' : '#a8741a' },
@@ -147,11 +158,13 @@ export function createAppTheme(mode: 'light' | 'dark') {
           sizeSmall: { minHeight: 32, paddingInline: 10, fontSize: '0.88rem' },
           sizeLarge: { minHeight: 48 },
           containedPrimary: {
-            '&:hover': { backgroundColor: t.redInk, color: dark ? t.paper : '#fff' },
+            '&:hover': { backgroundColor: t.actionHover },
           },
+          textPrimary: { color: t.ink },
           outlined: { borderWidth: 1.5, '&:hover': { borderWidth: 1.5 } },
           outlinedPrimary: {
             borderColor: t.ink,
+            color: t.ink,
             '&:hover': { backgroundColor: t.ink, color: t.paper, borderColor: t.ink },
           },
           text: { '&:hover': { backgroundColor: 'transparent', textDecoration: 'underline', textUnderlineOffset: 4 } },
@@ -191,7 +204,7 @@ export function createAppTheme(mode: 'light' | 'dark') {
         styleOverrides: { root: { borderRadius: 0 } },
       },
       MuiTabs: {
-        styleOverrides: { indicator: { height: 2, backgroundColor: t.ink } },
+        styleOverrides: { indicator: { height: 3, backgroundColor: t.red } },
       },
       MuiTab: {
         styleOverrides: { root: { textTransform: 'none', fontWeight: 600, minHeight: 44, '&.Mui-selected': { color: t.ink } } },

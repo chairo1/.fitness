@@ -40,3 +40,28 @@ export const useToastStore = create<ToastState>((set) => ({
 }));
 
 export const notify = (message: string, severity?: AlertColor) => useToastStore.getState().notify(message, severity);
+
+/**
+ * One "log a workout" dialog for the whole app (opened from the app bar, the dashboard, a program day…).
+ * `version` bumps after every save so pages can refetch.
+ */
+interface ComposerState {
+  draft: import('../components/WorkoutDialog').WorkoutDraft | null;
+  isOpen: boolean;
+  version: number;
+  openComposer: (draft?: import('../components/WorkoutDialog').WorkoutDraft) => void;
+  closeComposer: () => void;
+  markSaved: () => void;
+}
+
+export const useComposer = create<ComposerState>((set) => ({
+  draft: null,
+  isOpen: false,
+  version: 0,
+  openComposer: (draft) => set({ isOpen: true, draft: draft ?? null }),
+  closeComposer: () => set({ isOpen: false }),
+  markSaved: () => set((s) => ({ isOpen: false, version: s.version + 1 })),
+}));
+
+/** Data version to put in `useAsync` deps on pages that show workouts. */
+export const useDataVersion = () => useComposer((s) => s.version);

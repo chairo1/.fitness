@@ -133,7 +133,10 @@ export interface Dashboard {
   };
   weekly: { week: string; workouts: number; volume: number }[];
   records: { id: string; name: string; muscleGroup: MuscleGroup; maxWeight: number; est1rm: number }[];
-  muscles: { muscleGroup: MuscleGroup; sets: number }[];
+  /** Last 30 days; `lastDate` is the most recent workout that hit the group. */
+  muscles: { muscleGroup: MuscleGroup; sets: number; lastDate: string }[];
+  weekDays: string[];
+  weekPlan: { date: string; title: string; status: DayStatus }[];
   recent: { id: string; title: string; date: string; durationMin: number | null; sets: number; volume: number }[];
   body: BodyMetric[];
   activeProgram: (Omit<Program, 'days'> & { nextDay: ProgramDay | null }) | null;

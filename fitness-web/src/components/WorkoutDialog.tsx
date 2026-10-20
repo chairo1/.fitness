@@ -9,10 +9,8 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  Divider,
   IconButton,
   InputAdornment,
-  Paper,
   Stack,
   TextField,
   Typography,
@@ -21,10 +19,10 @@ import {
 } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { api, errorMessage } from '../api/client';
-import type { ProgramDay, Workout } from '../api/types';
+import type { ExerciseProgressPoint, ProgramDay, Workout } from '../api/types';
 import { notify } from '../store/ui';
 import { FONT_MONO } from '../theme';
-import { fmtVolume, today } from '../utils/format';
+import { fmtDateShort, fmtNum, fmtVolume, today } from '../utils/format';
 import ExerciseSelect from './ExerciseSelect';
 
 interface SetRow {
@@ -47,7 +45,8 @@ export interface WorkoutDraft {
 }
 
 let seq = 0;
-const block = (exerciseId: string | null = null, sets: SetRow[] = [{ reps: 10, weightKg: 0 }]): Block => ({
+const DEFAULT_SET: SetRow = { reps: 10, weightKg: 0 };
+const block = (exerciseId: string | null = null, sets: SetRow[] = [{ ...DEFAULT_SET }]): Block => ({
   key: ++seq,
   exerciseId,
   sets,
@@ -96,6 +95,191 @@ export const draftFromProgramDay = (d: ProgramDay): WorkoutDraft => ({
   ),
 });
 
+// ---------------------------------------------------------------------------
+// "Previous" values (Hevy-style): the last session of each exercise before this workout's date.
+// ---------------------------------------------------------------------------
+
+const history = new Map<string, Promise<ExerciseProgressPoint[]>>();
+const historyOf = (id: string) => {
+  if (!history.has(id)) history.set(id, api.exerciseProgress(id).catch(() => []));
+  return history.get(id)!;
+};
+
+interface Previous {
+  date: string;
+  sets: number;
+  reps: number; // average per set
+  weightKg: number; // heaviest set
+  best: number; // all-time heaviest before this date
+}
+
+async function previousOf(exerciseId: string, before: string, excludeDate?: string): Promise<Previous | null> {
+  // Up to the workout's date; when editing, that workout's own day is left out (progress is grouped by date).
+  const earlier = (await historyOf(exerciseId)).filter((p) => p.date <= before && p.date !== excludeDate);
+  const last = earlier[earlier.length - 1];
+  if (!last) return null;
+  return {
+    date: last.date,
+    sets: last.sets,
+    reps: Math.round(last.reps / Math.max(1, last.sets)),
+    weightKg: last.maxWeight,
+    best: earlier.reduce((m, p) => Math.max(m, p.maxWeight), 0),
+  };
+}
+
+const isUntouched = (b: Block) => b.sets.length === 1 && b.sets[0].reps === DEFAULT_SET.reps && b.sets[0].weightKg === 0;
+
+function BlockEditor({
+  b,
+  index,
+  date,
+  editingDate,
+  onChange,
+  onRemove,
+}: {
+  b: Block;
+  index: number;
+  date: string;
+  editingDate?: string;
+  onChange: (fn: (b: Block) => Block) => void;
+  onRemove: () => void;
+}) {
+  const t = useTheme().tokens;
+  const [prev, setPrev] = useState<Previous | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    setPrev(null);
+    if (!b.exerciseId) return;
+    previousOf(b.exerciseId, date, editingDate).then((p) => alive && setPrev(p));
+    return () => {
+      alive = false;
+    };
+  }, [b.exerciseId, date, editingDate]);
+
+  const pick = async (id: string | null) => {
+    const untouched = isUntouched(b);
+    onChange((x) => ({ ...x, exerciseId: id }));
+    // Picking an exercise on an empty block fills it from last time, so you only change what changed.
+    if (id && untouched) {
+      const p = await previousOf(id, date, editingDate);
+      if (p) onChange((x) => (isUntouched(x) ? { ...x, sets: Array.from({ length: p.sets }, () => ({ reps: p.reps, weightKg: p.weightKg })) } : x));
+    }
+  };
+
+  const updateSet = (i: number, patch: Partial<SetRow>) =>
+    onChange((x) => ({ ...x, sets: x.sets.map((s, j) => (j === i ? { ...s, ...patch } : s)) }));
+  const num = (v: string) => (v === '' ? 0 : Math.max(0, Number(v)));
+  const top = Math.max(0, ...b.sets.map((s) => s.weightKg));
+  const isPr = !!prev && prev.best > 0 && top > prev.best;
+
+  return (
+    <Box sx={{ border: `1px solid ${t.ruleStrong}`, borderRadius: '6px', bgcolor: 'background.default' }}>
+      <Stack direction="row" gap={1} alignItems="center" px={1.5} pt={1.5}>
+        <Typography fontWeight={600} color="text.secondary" width={22} sx={{ fontFamily: FONT_MONO }}>
+          {index + 1}
+        </Typography>
+        <ExerciseSelect value={b.exerciseId} onChange={pick} />
+        <IconButton onClick={onRemove} aria-label="Hərəkəti sil">
+          <DeleteOutlineRounded />
+        </IconButton>
+      </Stack>
+      <Stack direction="row" alignItems="center" gap={1} px={1.5} pl={{ xs: 1.5, sm: 5 }} mt={0.75} minHeight={22}>
+        <Typography variant="body2" color="text.secondary" fontSize={13}>
+          {!b.exerciseId
+            ? 'Hərəkət seçin — əvvəlki nəticəniz avtomatik dolacaq.'
+            : prev
+              ? `Əvvəlki: ${fmtDateShort(prev.date)} · ${prev.sets}×${prev.reps} · ${fmtNum(prev.weightKg, 1)} kg · rekord ${fmtNum(prev.best, 1)} kg`
+              : 'Bu hərəkəti ilk dəfə yazırsınız.'}
+        </Typography>
+        {isPr && (
+          <Box component="span" sx={{ bgcolor: t.red, color: '#fff', fontSize: 11.5, fontWeight: 600, px: 0.75, py: 0.1, borderRadius: '3px' }}>
+            Yeni rekord
+          </Box>
+        )}
+      </Stack>
+
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: '40px minmax(70px, 96px) 92px 120px 34px',
+          columnGap: 1,
+          rowGap: 0.75,
+          alignItems: 'center',
+          px: 1.5,
+          pl: { xs: 1.5, sm: 5 },
+          py: 1.25,
+        }}
+      >
+        {['Set', 'Əvvəlki', 'Təkrar', 'Çəki', ''].map((h, i) => (
+          <Typography key={i} variant="body2" color="text.secondary" fontSize={12}>
+            {h}
+          </Typography>
+        ))}
+        {b.sets.map((s, i) => {
+          const hasPrev = prev && i < prev.sets;
+          return (
+            <Box key={i} sx={{ display: 'contents' }}>
+              <Typography sx={{ fontFamily: FONT_MONO, fontSize: 14 }}>{i + 1}</Typography>
+              <Box
+                component={hasPrev ? 'button' : 'span'}
+                type={hasPrev ? 'button' : undefined}
+                title={hasPrev ? 'Bu seti əvvəlki kimi doldur' : undefined}
+                onClick={hasPrev ? () => updateSet(i, { reps: prev!.reps, weightKg: prev!.weightKg }) : undefined}
+                sx={{
+                  p: 0,
+                  border: 0,
+                  bgcolor: 'transparent',
+                  textAlign: 'left',
+                  fontFamily: FONT_MONO,
+                  fontSize: 13,
+                  color: 'text.secondary',
+                  cursor: hasPrev ? 'pointer' : 'default',
+                  '&:hover': hasPrev ? { color: 'text.primary', textDecoration: 'underline' } : undefined,
+                }}
+              >
+                {hasPrev ? `${prev!.reps}×${fmtNum(prev!.weightKg, 1)}` : '—'}
+              </Box>
+              <TextField
+                size="small"
+                type="number"
+                value={s.reps}
+                onChange={(e) => updateSet(i, { reps: Math.round(num(e.target.value)) })}
+                inputProps={{ 'aria-label': `Set ${i + 1} təkrar` }}
+              />
+              <TextField
+                size="small"
+                type="number"
+                value={s.weightKg}
+                onChange={(e) => updateSet(i, { weightKg: num(e.target.value) })}
+                InputProps={{ endAdornment: <InputAdornment position="end">kg</InputAdornment> }}
+                inputProps={{ step: 0.5, 'aria-label': `Set ${i + 1} çəki` }}
+              />
+              <IconButton
+                size="small"
+                disabled={b.sets.length === 1}
+                onClick={() => onChange((x) => ({ ...x, sets: x.sets.filter((_, j) => j !== i) }))}
+                aria-label="Seti sil"
+              >
+                <CloseRounded fontSize="small" />
+              </IconButton>
+            </Box>
+          );
+        })}
+      </Box>
+      <Box px={1.5} pl={{ xs: 1.5, sm: 5 }} pb={1.25}>
+        <Button
+          size="small"
+          startIcon={<AddRounded />}
+          onClick={() => onChange((x) => ({ ...x, sets: [...x.sets, { ...x.sets[x.sets.length - 1] }] }))}
+        >
+          Set əlavə et
+        </Button>
+      </Box>
+    </Box>
+  );
+}
+
 export default function WorkoutDialog({
   open,
   draft,
@@ -122,10 +306,8 @@ export default function WorkoutDialog({
   const updateBlock = (key: number, fn: (b: Block) => Block) =>
     setD((x) => ({ ...x, blocks: x.blocks.map((b) => (b.key === key ? fn(b) : b)) }));
 
-  const updateSet = (key: number, i: number, patch: Partial<SetRow>) =>
-    updateBlock(key, (b) => ({ ...b, sets: b.sets.map((s, j) => (j === i ? { ...s, ...patch } : s)) }));
-
   const volume = d.blocks.reduce((sum, b) => sum + b.sets.reduce((s, r) => s + r.reps * r.weightKg, 0), 0);
+  const setCount = d.blocks.reduce((n, b) => n + (b.exerciseId ? b.sets.length : 0), 0);
 
   const save = async () => {
     const blocks = d.blocks.filter((b) => b.exerciseId && b.sets.length);
@@ -145,6 +327,7 @@ export default function WorkoutDialog({
         },
         d.id,
       );
+      history.clear();
       notify(d.id ? 'Məşq yeniləndi' : 'Məşq yazıldı');
       onSaved(saved);
     } catch (e) {
@@ -159,8 +342,8 @@ export default function WorkoutDialog({
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="md" fullScreen={fullScreen}>
       <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        <Box flex={1}>{d.id ? 'Məşqi redaktə et' : 'Yeni məşq'}</Box>
-        <IconButton onClick={onClose}>
+        <Box flex={1}>{d.id ? 'Məşqi redaktə et' : 'Məşq yaz'}</Box>
+        <IconButton onClick={onClose} aria-label="Bağla">
           <CloseRounded />
         </IconButton>
       </DialogTitle>
@@ -170,7 +353,7 @@ export default function WorkoutDialog({
           {d.programDayId && !d.id && (
             <Alert severity="info">Proqram planından dolduruldu. Faktiki təkrar və çəkini düzəldin.</Alert>
           )}
-          <Stack direction={{ xs: 'column', sm: 'row' }} gap={2}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} gap={1.5}>
             <TextField
               label="Məşqin adı"
               placeholder="məs. Sinə + Triceps"
@@ -178,10 +361,13 @@ export default function WorkoutDialog({
               onChange={(e) => setD({ ...d, title: e.target.value })}
               sx={{ flex: 2 }}
               required
+              autoFocus={!d.title}
+              size="small"
             />
             <TextField
               label="Tarix"
               type="date"
+              size="small"
               value={d.date}
               onChange={(e) => setD({ ...d, date: e.target.value })}
               InputLabelProps={{ shrink: true }}
@@ -190,98 +376,43 @@ export default function WorkoutDialog({
             <TextField
               label="Müddət"
               type="number"
+              size="small"
               value={d.durationMin}
               onChange={(e) => setD({ ...d, durationMin: e.target.value === '' ? '' : num(e.target.value) })}
               InputProps={{ endAdornment: <InputAdornment position="end">dəq</InputAdornment> }}
-              sx={{ flex: 1 }}
+              sx={{ flex: 0.8 }}
             />
           </Stack>
 
           {d.blocks.map((b, bi) => (
-            <Paper key={b.key} variant="outlined" sx={{ p: 2, bgcolor: 'background.default' }}>
-              <Stack direction="row" gap={1} alignItems="center" mb={1.5}>
-                <Typography fontWeight={600} color="text.secondary" width={24} sx={{ fontFamily: FONT_MONO }}>
-                  {bi + 1}
-                </Typography>
-                <ExerciseSelect value={b.exerciseId} onChange={(id) => updateBlock(b.key, (x) => ({ ...x, exerciseId: id }))} />
-                <IconButton
-                  onClick={() => setD((x) => ({ ...x, blocks: x.blocks.filter((y) => y.key !== b.key) }))}
-                  aria-label="Hərəkəti sil"
-                >
-                  <DeleteOutlineRounded />
-                </IconButton>
-              </Stack>
-              <Stack gap={1} pl={{ sm: 4 }}>
-                {b.sets.map((s, i) => (
-                  <Stack key={i} direction="row" gap={1} alignItems="center">
-                    <Typography variant="body2" color="text.secondary" width={48} flexShrink={0}>
-                      Set {i + 1}
-                    </Typography>
-                    <TextField
-                      size="small"
-                      type="number"
-                      label="Təkrar"
-                      value={s.reps}
-                      onChange={(e) => updateSet(b.key, i, { reps: Math.round(num(e.target.value)) })}
-                      sx={{ width: 110 }}
-                    />
-                    <TextField
-                      size="small"
-                      type="number"
-                      label="Çəki"
-                      value={s.weightKg}
-                      onChange={(e) => updateSet(b.key, i, { weightKg: num(e.target.value) })}
-                      InputProps={{ endAdornment: <InputAdornment position="end">kg</InputAdornment> }}
-                      inputProps={{ step: 0.5 }}
-                      sx={{ width: 130 }}
-                    />
-                    <IconButton
-                      size="small"
-                      disabled={b.sets.length === 1}
-                      onClick={() => updateBlock(b.key, (x) => ({ ...x, sets: x.sets.filter((_, j) => j !== i) }))}
-                      aria-label="Seti sil"
-                    >
-                      <CloseRounded fontSize="small" />
-                    </IconButton>
-                  </Stack>
-                ))}
-                <Box>
-                  <Button
-                    size="small"
-                    startIcon={<AddRounded />}
-                    onClick={() =>
-                      updateBlock(b.key, (x) => ({ ...x, sets: [...x.sets, { ...x.sets[x.sets.length - 1] }] }))
-                    }
-                  >
-                    Set əlavə et
-                  </Button>
-                </Box>
-              </Stack>
-            </Paper>
+            <BlockEditor
+              key={b.key}
+              b={b}
+              index={bi}
+              date={d.date}
+              editingDate={d.id ? draft?.date : undefined}
+              onChange={(fn) => updateBlock(b.key, fn)}
+              onRemove={() => setD((x) => ({ ...x, blocks: x.blocks.filter((y) => y.key !== b.key) }))}
+            />
           ))}
 
           <Box>
-            <Button
-              variant="outlined"
-              startIcon={<AddRounded />}
-              onClick={() => setD((x) => ({ ...x, blocks: [...x.blocks, block()] }))}
-            >
+            <Button variant="outlined" startIcon={<AddRounded />} onClick={() => setD((x) => ({ ...x, blocks: [...x.blocks, block()] }))}>
               Hərəkət əlavə et
             </Button>
           </Box>
-          <Divider />
-          <TextField
-            label="Qeydlər"
-            multiline
-            minRows={2}
-            value={d.notes}
-            onChange={(e) => setD({ ...d, notes: e.target.value })}
-          />
+          <TextField label="Qeyd" size="small" multiline minRows={1} value={d.notes} onChange={(e) => setD({ ...d, notes: e.target.value })} />
         </Stack>
       </DialogContent>
-      <DialogActions sx={{ px: 3, py: 2 }}>
-        <Typography color="text.secondary" flex={1}>
-          Ümumi həcm: <Box component="b" sx={{ fontFamily: FONT_MONO, color: 'text.primary' }}>{fmtVolume(volume)}</Box>
+      <DialogActions sx={{ px: 3, py: 1.75, gap: 1 }}>
+        <Typography color="text.secondary" flex={1} fontSize={14}>
+          <Box component="b" sx={{ fontFamily: FONT_MONO, color: 'text.primary' }}>
+            {setCount}
+          </Box>{' '}
+          set · həcm{' '}
+          <Box component="b" sx={{ fontFamily: FONT_MONO, color: 'text.primary' }}>
+            {fmtVolume(volume)}
+          </Box>
         </Typography>
         <Button onClick={onClose}>Ləğv et</Button>
         <Button variant="contained" onClick={save} disabled={busy}>

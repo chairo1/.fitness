@@ -1,4 +1,4 @@
-import { Button } from '@mui/material';
+import { MenuItem } from '@mui/material';
 import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom';
 import AppProviders from './components/AppProviders';
 import Layout, { type NavItem } from './components/Layout';
@@ -8,18 +8,17 @@ import BodyPage from './pages/BodyPage';
 import DashboardPage from './pages/DashboardPage';
 import ExercisesPage from './pages/ExercisesPage';
 import LandingPage from './pages/landing/LandingPage';
-import ProgramDetailPage from './pages/ProgramDetailPage';
 import ProgramEditorPage from './pages/ProgramEditorPage';
 import ProgramsPage from './pages/ProgramsPage';
 import WorkoutsPage from './pages/WorkoutsPage';
 import { useAuthStore, useCan } from './store/auth';
 
 const NAV: NavItem[] = [
-  { to: '/', label: 'Əsas səhifə' },
-  { to: '/workouts', label: 'Məşqlər' },
-  { to: '/programs', label: 'Proqramlar' },
-  { to: '/exercises', label: 'Hərəkətlər' },
-  { to: '/body', label: 'Bədən ölçüləri' },
+  { to: '/', label: 'Bu gün', short: 'Bu gün' },
+  { to: '/workouts', label: 'Jurnal', short: 'Jurnal' },
+  { to: '/programs', label: 'Proqramlar', short: 'Proqram' },
+  { to: '/exercises', label: 'Hərəkətlər', short: 'Hərəkət' },
+  { to: '/body', label: 'Bədən', short: 'Bədən' },
 ];
 
 /** Guests see the landing page at "/" and are sent to sign-in from any other app route. */
@@ -39,9 +38,9 @@ function AdminLink() {
   const can = useCan();
   if (!can('admin.access')) return null;
   return (
-    <Button variant="outlined" href={adminUrl()} fullWidth>
+    <MenuItem component="a" href={adminUrl()}>
       Admin panel
-    </Button>
+    </MenuItem>
   );
 }
 
@@ -54,12 +53,12 @@ export default function App() {
           <Route path="/register" element={<AuthPage mode="register" />} />
         </Route>
         <Route element={<RequireAuth />}>
-          <Route element={<Layout nav={NAV} sidebarExtra={<AdminLink />} />}>
+          <Route element={<Layout nav={NAV} menuExtra={<AdminLink />} />}>
             <Route index element={<DashboardPage />} />
             <Route path="workouts" element={<WorkoutsPage />} />
             <Route path="programs" element={<ProgramsPage />} />
             <Route path="programs/new" element={<ProgramEditorPage />} />
-            <Route path="programs/:id" element={<ProgramDetailPage />} />
+            <Route path="programs/:id" element={<ProgramsPage />} />
             <Route path="programs/:id/edit" element={<ProgramEditorPage />} />
             <Route path="exercises" element={<ExercisesPage />} />
             <Route path="body" element={<BodyPage />} />

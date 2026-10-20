@@ -1,4 +1,4 @@
-import { Box, Button, Card, CardContent, Stack, Typography } from '@mui/material';
+import { Box, Button, Card, CardContent, MenuItem, Stack, Typography } from '@mui/material';
 import { Navigate, Outlet, Route, Routes } from 'react-router-dom';
 import AppProviders from '../components/AppProviders';
 import Layout, { type NavItem } from '../components/Layout';
@@ -58,10 +58,11 @@ function AdminLayout() {
     <Layout
       nav={NAV.filter((n) => can(n.permission))}
       brand="Admin"
-      sidebarExtra={
-        <Button variant="outlined" href={appUrl()} fullWidth>
+      composer={false}
+      menuExtra={
+        <MenuItem component="a" href={appUrl()}>
           Tətbiqə qayıt
-        </Button>
+        </MenuItem>
       }
     />
   );

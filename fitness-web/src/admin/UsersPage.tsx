@@ -322,7 +322,7 @@ export default function UsersPage() {
                       <TableRow key={u.id} hover sx={{ opacity: u.isActive ? 1 : 0.6 }}>
                         <TableCell>
                           <Stack direction="row" gap={1.5} alignItems="center">
-                            <Avatar sx={{ width: 36, height: 36, bgcolor: 'primary.main' }}>{u.name[0]?.toUpperCase()}</Avatar>
+                            <Avatar sx={{ width: 36, height: 36, bgcolor: 'text.primary' }}>{u.name[0]?.toUpperCase()}</Avatar>
                             <Box minWidth={0}>
                               <Typography fontWeight={600} noWrap>
                                 {u.name} {self && <Chip size="small" label="Siz" sx={{ ml: 0.5 }} />}

@@ -6,9 +6,6 @@ import {
   Alert,
   Box,
   Button,
-  Card,
-  CardContent,
-  Grid,
   IconButton,
   InputAdornment,
   Stack,
@@ -17,7 +14,9 @@ import {
   TextField,
   ToggleButton,
   ToggleButtonGroup,
+  Tooltip,
   Typography,
+  useTheme,
 } from '@mui/material';
 import dayjs from 'dayjs';
 import { useEffect, useState } from 'react';
@@ -25,9 +24,9 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { api, errorMessage } from '../api/client';
 import type { ProgramInput, ProgramType } from '../api/types';
 import ExerciseSelect from '../components/ExerciseSelect';
-import { Loading, Num, PageHeader } from '../components/common';
+import { ListRow, Loading, Num, Panel, Screen } from '../components/common';
 import { notify } from '../store/ui';
-import { fmtDateShort, ordinal, today, weekday } from '../utils/format';
+import { fmtDateShort, ordinal, today, weekday, weekdayShort } from '../utils/format';
 
 interface ExRow {
   key: number;
@@ -49,6 +48,7 @@ const WEEKS: Record<ProgramType, number> = { weekly: 1, monthly: 4 };
 export default function ProgramEditorPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const rule = useTheme().tokens.rule;
   const [loading, setLoading] = useState(!!id);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,6 +62,7 @@ export default function ProgramEditorPage() {
   });
   const [days, setDays] = useState<Record<string, DayDraft>>({});
   const [week, setWeek] = useState(1);
+  const [selDay, setSelDay] = useState(1);
 
   useEffect(() => {
     if (!id) return;
@@ -157,196 +158,209 @@ export default function ProgramEditorPage() {
     Boolean,
   ).length;
   const int = (v: string, min = 1) => Math.max(min, Math.round(Number(v) || 0));
+  const k = dayKey(week, selDay);
+  const day = days[k];
+  const selDate = dateOf(week, selDay);
 
   return (
-    <>
-      <PageHeader
-        title={id ? 'Proqramı redaktə et' : 'Yeni proqram'}
-        subtitle="Hərəkət əlavə olunmayan günlər istirahət günü sayılır"
-        action={
-          <Stack direction="row" gap={1}>
-            <Button startIcon={<ArrowBackRounded />} onClick={() => navigate(-1)}>
-              Geri
-            </Button>
-            <Button variant="contained" onClick={save} disabled={busy}>
-              Yadda saxla
-            </Button>
-          </Stack>
-        }
-      />
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
-
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Grid container spacing={2}>
-            <Grid item xs={12} md={5}>
-              <TextField
-                label="Proqramın adı"
-                placeholder="məs. Güc proqramı — Oktyabr"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                fullWidth
-                required
-              />
-            </Grid>
-            <Grid item xs={12} sm={6} md={4}>
-              <ToggleButtonGroup
-                exclusive
-                fullWidth
-                color="primary"
-                value={type}
-                onChange={(_, v: ProgramType | null) => {
-                  if (!v) return;
-                  setType(v);
-                  if (week > WEEKS[v]) setWeek(1);
-                }}
-                sx={{ height: 56 }}
-              >
-                <ToggleButton value="weekly">Həftəlik (7 gün)</ToggleButton>
-                <ToggleButton value="monthly">Aylıq (4 həftə)</ToggleButton>
-              </ToggleButtonGroup>
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+    <Screen
+      title={id ? 'Proqramı redaktə et' : 'Yeni proqram'}
+      purpose="Solda proqram və günlər, sağda seçilmiş günün planı. Hərəkətsiz gün — istirahət."
+      action={
+        <Stack direction="row" gap={1}>
+          <Button startIcon={<ArrowBackRounded />} onClick={() => navigate(-1)}>
+            Geri
+          </Button>
+          <Button variant="contained" onClick={save} disabled={busy}>
+            Yadda saxla
+          </Button>
+        </Stack>
+      }
+    >
+      <Box
+        sx={{
+          height: { md: '100%' },
+          display: 'grid',
+          gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'minmax(320px, 4fr) minmax(0, 7fr)' },
+          gap: 2,
+        }}
+      >
+        <Panel flush scroll>
+          <Stack gap={2} p={2.5} sx={{ borderBottom: (t) => `1px solid ${t.tokens.rule}` }}>
+            {error && <Alert severity="error">{error}</Alert>}
+            <TextField
+              label="Proqramın adı"
+              placeholder="məs. Güc proqramı — Oktyabr"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              fullWidth
+              required
+            />
+            <ToggleButtonGroup
+              exclusive
+              fullWidth
+              value={type}
+              onChange={(_, v: ProgramType | null) => {
+                if (!v) return;
+                setType(v);
+                if (week > WEEKS[v]) setWeek(1);
+              }}
+              size="small"
+            >
+              <ToggleButton value="weekly">Həftəlik · 7 gün</ToggleButton>
+              <ToggleButton value="monthly">Aylıq · 4 həftə</ToggleButton>
+            </ToggleButtonGroup>
+            <Stack direction="row" gap={1.5}>
               <TextField
                 label="Başlama tarixi"
                 type="date"
+                size="small"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value || today())}
                 InputLabelProps={{ shrink: true }}
-                fullWidth
+                sx={{ flex: 1 }}
               />
-            </Grid>
-            <Grid item xs={12}>
               <TextField
-                label="Təsvir (istəyə bağlı)"
+                label="Təsvir"
+                size="small"
+                placeholder="istəyə bağlı"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                fullWidth
-                multiline
-                minRows={1}
+                sx={{ flex: 1.4 }}
               />
-            </Grid>
-          </Grid>
-        </CardContent>
-      </Card>
+            </Stack>
+          </Stack>
 
-      <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ sm: 'center' }} gap={1} mb={2}>
-        {weeks > 1 ? (
-          <Tabs value={week} onChange={(_, v) => setWeek(v)} variant="scrollable">
-            {Array.from({ length: weeks }, (_, i) => (
-              <Tab key={i} value={i + 1} label={`${ordinal(i + 1)} həftə`} />
-            ))}
-          </Tabs>
-        ) : (
-          <Typography variant="h6">Həftəlik plan</Typography>
-        )}
-        <Box flex={1} />
-        <Typography variant="body2" color="text.secondary">
-          {plannedInWeek} məşq günü · {7 - plannedInWeek} istirahət
-        </Typography>
-        {weeks > 1 && (
-          <Button size="small" startIcon={<ContentCopyRounded />} onClick={copyWeekToAll}>
-            Bu həftəni digərlərinə köçür
-          </Button>
-        )}
-      </Stack>
+          {weeks > 1 && (
+            <Stack direction="row" alignItems="center" sx={{ borderBottom: (t) => `1px solid ${t.tokens.rule}` }} pr={1}>
+              <Tabs value={week} onChange={(_, v) => setWeek(v)} variant="scrollable" sx={{ flex: 1, minHeight: 44 }}>
+                {Array.from({ length: weeks }, (_, i) => (
+                  <Tab key={i} value={i + 1} label={`${ordinal(i + 1)} həftə`} sx={{ minWidth: 0, px: 1.5 }} />
+                ))}
+              </Tabs>
+              <Tooltip title="Bu həftəni digərlərinə köçür">
+                <IconButton size="small" onClick={copyWeekToAll} aria-label="Bu həftəni digərlərinə köçür">
+                  <ContentCopyRounded fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            </Stack>
+          )}
+          <Stack direction="row" justifyContent="space-between" px={2.5} pt={1.25} pb={0.5}>
+            <Typography variant="body2" color="text.secondary">
+              Günlər
+            </Typography>
+            <Num sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+              {plannedInWeek} məşq · {7 - plannedInWeek} istirahət
+            </Num>
+          </Stack>
+          {Array.from({ length: 7 }, (_, i) => {
+            const d = i + 1;
+            const dd = days[dayKey(week, d)];
+            const n = dd?.exercises.length ?? 0;
+            const date = dateOf(week, d);
+            return (
+              <ListRow key={d} first={i === 0} selected={selDay === d} onClick={() => setSelDay(d)}>
+                <Box width={56} flexShrink={0}>
+                  <Num sx={{ display: 'block', fontSize: 12.5, color: 'text.secondary' }}>{weekdayShort(date)}</Num>
+                  <Num sx={{ fontSize: 13 }}>{fmtDateShort(date)}</Num>
+                </Box>
+                <Typography flex={1} minWidth={0} noWrap fontWeight={n ? 600 : 400} color={n ? 'text.primary' : 'text.secondary'}>
+                  {n ? dd.title || `${ordinal(d)} gün` : 'İstirahət'}
+                </Typography>
+                <Num sx={{ fontSize: 12.5, color: 'text.secondary' }}>{n ? `${n} hərəkət` : ''}</Num>
+              </ListRow>
+            );
+          })}
+        </Panel>
 
-      <Grid container spacing={2}>
-        {Array.from({ length: 7 }, (_, i) => {
-          const d = i + 1;
-          const k = dayKey(week, d);
-          const day = days[k];
-          const date = dateOf(week, d);
-          const rest = !day?.exercises.length;
-          return (
-            <Grid item xs={12} md={6} xl={4} key={k}>
-              <Card sx={{ height: '100%', borderTop: (t) => `${rest ? 1 : 3}px solid ${rest ? t.tokens.ruleStrong : t.tokens.ink}` }}>
-                <CardContent>
-                  <Stack direction="row" alignItems="baseline" justifyContent="space-between" mb={1.5}>
-                    <Typography variant="h6" component="h3">
-                      {weekday(date)}
-                    </Typography>
-                    <Num sx={{ fontSize: 13, color: 'text.secondary' }}>
-                      {ordinal(d)} gün · {fmtDateShort(date)}
-                    </Num>
-                  </Stack>
-
-                  {rest ? (
-                    <Typography color="text.secondary" py={1.5}>
-                      İstirahət günü — hərəkət əlavə etsəniz, məşq gününə çevriləcək.
-                    </Typography>
-                  ) : (
-                    <Stack gap={1.5}>
-                      <TextField
-                        size="small"
-                        label="Günün adı"
-                        placeholder="məs. Ayaq günü"
-                        value={day.title}
-                        onChange={(e) => updateDay(k, (x) => ({ ...x, title: e.target.value }))}
-                      />
-                      {day.exercises.map((e) => (
-                        <Box key={e.key} sx={{ p: 1.5, borderRadius: '4px', bgcolor: 'action.hover' }}>
-                          <Stack direction="row" gap={1} alignItems="center" mb={1}>
-                            <ExerciseSelect value={e.exerciseId} onChange={(v) => updateEx(k, e.key, { exerciseId: v })} />
-                            <IconButton
-                              size="small"
-                              onClick={() =>
-                                updateDay(k, (x) => ({ ...x, exercises: x.exercises.filter((y) => y.key !== e.key) }))
-                              }
-                            >
-                              <CloseRounded fontSize="small" />
-                            </IconButton>
-                          </Stack>
-                          <Stack direction="row" gap={1}>
-                            <TextField
-                              size="small"
-                              type="number"
-                              label="Set"
-                              value={e.sets}
-                              onChange={(ev) => updateEx(k, e.key, { sets: Math.min(20, int(ev.target.value)) })}
-                            />
-                            <TextField
-                              size="small"
-                              type="number"
-                              label="Təkrar"
-                              value={e.reps}
-                              onChange={(ev) => updateEx(k, e.key, { reps: Math.min(200, int(ev.target.value)) })}
-                            />
-                            <TextField
-                              size="small"
-                              type="number"
-                              label="Hədəf"
-                              value={e.targetWeightKg}
-                              onChange={(ev) =>
-                                updateEx(k, e.key, {
-                                  targetWeightKg: ev.target.value === '' ? '' : Math.max(0, Number(ev.target.value)),
-                                })
-                              }
-                              InputProps={{ endAdornment: <InputAdornment position="end">kg</InputAdornment> }}
-                            />
-                          </Stack>
-                        </Box>
-                      ))}
-                    </Stack>
-                  )}
-                  <Button
+        <Panel
+          flush
+          scroll
+          title={`${weekday(selDate)}, ${fmtDateShort(selDate)}`}
+          meta={`${ordinal(selDay)} gün${weeks > 1 ? ` · ${ordinal(week)} həftə` : ''}`}
+          action={
+            day?.exercises.length ? (
+              <Button size="small" onClick={() => updateDay(k, () => ({ title: '', exercises: [] }))} sx={{ color: 'text.secondary' }}>
+                İstirahət günü et
+              </Button>
+            ) : undefined
+          }
+        >
+          <Stack gap={1.5} p={2.5}>
+            {day?.exercises.length ? (
+              <TextField
+                label="Günün adı"
+                placeholder="məs. Ayaq günü"
+                value={day.title}
+                onChange={(e) => updateDay(k, (x) => ({ ...x, title: e.target.value }))}
+              />
+            ) : (
+              <Typography color="text.secondary">İstirahət günü. Hərəkət əlavə etsəniz, məşq gününə çevriləcək.</Typography>
+            )}
+            {day?.exercises.map((e, i) => (
+              <Stack
+                key={e.key}
+                direction={{ xs: 'column', lg: 'row' }}
+                gap={1}
+                alignItems={{ lg: 'center' }}
+                sx={{ py: 1.25, borderTop: `1px solid ${rule}` }}
+              >
+                <Stack direction="row" gap={1} alignItems="center" flex={1} minWidth={0}>
+                  <Num sx={{ width: 18, color: 'text.secondary', fontSize: 13 }}>{i + 1}</Num>
+                  <ExerciseSelect value={e.exerciseId} onChange={(v) => updateEx(k, e.key, { exerciseId: v })} />
+                </Stack>
+                <Stack direction="row" gap={1} alignItems="center" pl={{ xs: 3.25, lg: 0 }}>
+                  <TextField
                     size="small"
-                    startIcon={<AddRounded />}
-                    sx={{ mt: 1.5 }}
-                    onClick={() => updateDay(k, (x) => ({ ...x, exercises: [...x.exercises, exRow()] }))}
+                    type="number"
+                    label="Set"
+                    value={e.sets}
+                    onChange={(ev) => updateEx(k, e.key, { sets: Math.min(20, int(ev.target.value)) })}
+                    sx={{ width: 76 }}
+                  />
+                  <TextField
+                    size="small"
+                    type="number"
+                    label="Təkrar"
+                    value={e.reps}
+                    onChange={(ev) => updateEx(k, e.key, { reps: Math.min(200, int(ev.target.value)) })}
+                    sx={{ width: 86 }}
+                  />
+                  <TextField
+                    size="small"
+                    type="number"
+                    label="Hədəf"
+                    value={e.targetWeightKg}
+                    onChange={(ev) =>
+                      updateEx(k, e.key, {
+                        targetWeightKg: ev.target.value === '' ? '' : Math.max(0, Number(ev.target.value)),
+                      })
+                    }
+                    InputProps={{ endAdornment: <InputAdornment position="end">kg</InputAdornment> }}
+                    sx={{ width: 118 }}
+                  />
+                  <IconButton
+                    size="small"
+                    onClick={() => updateDay(k, (x) => ({ ...x, exercises: x.exercises.filter((y) => y.key !== e.key) }))}
+                    aria-label="Hərəkəti sil"
                   >
-                    Hərəkət əlavə et
-                  </Button>
-                </CardContent>
-              </Card>
-            </Grid>
-          );
-        })}
-      </Grid>
-    </>
+                    <CloseRounded fontSize="small" />
+                  </IconButton>
+                </Stack>
+              </Stack>
+            ))}
+            <Box>
+              <Button
+                variant="outlined"
+                startIcon={<AddRounded />}
+                onClick={() => updateDay(k, (x) => ({ ...x, exercises: [...x.exercises, exRow()] }))}
+              >
+                Hərəkət əlavə et
+              </Button>
+            </Box>
+          </Stack>
+        </Panel>
+      </Box>
+    </Screen>
   );
 }

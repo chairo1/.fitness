@@ -76,7 +76,7 @@ export default function AdminDashboardPage() {
               {latest.map((u) => (
                 <ListItem key={u.id} disableGutters divider>
                   <ListItemAvatar>
-                    <Avatar sx={{ bgcolor: u.isActive ? 'primary.main' : 'action.disabled', width: 36, height: 36, fontSize: 15 }}>{u.name[0]?.toUpperCase()}</Avatar>
+                    <Avatar sx={{ bgcolor: u.isActive ? 'text.primary' : 'action.disabled', width: 36, height: 36, fontSize: 15 }}>{u.name[0]?.toUpperCase()}</Avatar>
                   </ListItemAvatar>
                   <ListItemText primary={u.name} secondary={`${u.email} · ${fmtDate(u.createdAt)}`} />
                   <Stack direction="row" gap={0.5} flexWrap="wrap" justifyContent="flex-end">

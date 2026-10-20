@@ -285,10 +285,19 @@ const norm = (deg: number) => ((deg % 360) + 360) % 360;
 export default function BodyModel3D({
   sets = {},
   onUnsupported,
+  variant = 'card',
+  selectedGroup = null,
+  onPickGroup,
 }: {
   sets?: Partial<Record<MuscleGroup, number>>;
   /** Called when WebGL or the model is unavailable, so the caller can show the 2D map instead. */
   onUnsupported: () => void;
+  /** `fill`: just the model and view buttons, sized by the parent — for use as a picker inside a panel. */
+  variant?: 'card' | 'fill';
+  /** Group to keep highlighted (fill variant). */
+  selectedGroup?: MuscleGroup | null;
+  /** Called instead of navigating when a muscle is picked. */
+  onPickGroup?: (group: MuscleGroup, partId: string) => void;
 }) {
   const theme = useTheme();
   const compact = useMediaQuery(theme.breakpoints.down('sm'));
@@ -301,7 +310,7 @@ export default function BodyModel3D({
   const drag = useRef<{ x: number; start: number } | null>(null);
 
   const part = musclePart(hovered ?? selected);
-  const activeGroup = part?.group ?? hoveredGroup;
+  const activeGroup = part?.group ?? hoveredGroup ?? selectedGroup;
   const partId = part?.id;
   const stateOf = useCallback(
     (id: string): State =>
@@ -309,11 +318,11 @@ export default function BodyModel3D({
     [partId, activeGroup],
   );
 
-  const open = (p: MusclePart) => navigate(exercisesUrl(p.group, p.id));
+  const open = (p: MusclePart) => (onPickGroup ? onPickGroup(p.group, p.id) : navigate(exercisesUrl(p.group, p.id)));
   const onPick = (id: string | null, touch: boolean) => {
     const p = musclePart(id);
     if (!p) return setSelected(null);
-    if (!touch || selected === p.id) open(p);
+    if (!touch || selected === p.id || onPickGroup) open(p);
     else setSelected(p.id);
   };
 
@@ -333,6 +342,46 @@ export default function BodyModel3D({
   };
   // Go the short way round from the current (unbounded) angle.
   const turnTo = (deg: number) => setAngle((a) => a + ((deg - norm(a) + 540) % 360) - 180);
+
+  if (variant === 'fill') {
+    return (
+      <Box sx={{ position: 'relative', height: '100%', minHeight: 320, display: 'flex', flexDirection: 'column' }}>
+        <Typography variant="body2" sx={{ px: 1.5, py: 1, color: 'text.secondary', flexShrink: 0 }} noWrap>
+          {part ? (
+            <>
+              <Box component="b" sx={{ color: 'text.primary' }}>
+                {part.name}
+              </Box>{' '}
+              · {MUSCLE_LABELS[part.group]}
+            </>
+          ) : (
+            'Əzələyə klik — qrupu seçir. Sürüşdürün — fırlanır.'
+          )}
+        </Typography>
+        <Box sx={{ position: 'relative', flex: 1, minHeight: 0 }}>
+          <Box
+            onPointerDown={onPointerDown}
+            sx={{
+              position: 'absolute',
+              inset: 0,
+              cursor: hovered ? 'pointer' : 'grab',
+              '&:active': { cursor: hovered ? 'pointer' : 'grabbing' },
+              touchAction: 'pan-y',
+            }}
+          >
+            <ModelCanvas angle={angle} stateOf={stateOf} onHover={setHovered} onPick={onPick} onFail={onUnsupported} />
+          </Box>
+        </Box>
+        <ButtonGroup size="small" variant="outlined" sx={{ position: 'absolute', bottom: 10, left: '50%', transform: 'translateX(-50%)', bgcolor: 'background.paper' }}>
+          {VIEWS.map((v) => (
+            <Button key={v.deg} onClick={() => turnTo(v.deg)} variant={Math.round(norm(angle)) === v.deg ? 'contained' : 'outlined'}>
+              {v.label}
+            </Button>
+          ))}
+        </ButtonGroup>
+      </Box>
+    );
+  }
 
   return (
     <Stack direction={{ xs: 'column', md: 'row' }} gap={3}>
